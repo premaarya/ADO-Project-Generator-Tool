@@ -1,0 +1,73 @@
+{
+  "organization": "YOUR_ORG_NAME",
+  "project": "ADO-Migration-Test",
+  "pat": "YOUR_PERSONAL_ACCESS_TOKEN_HERE",
+  "processTemplate": "Agile",
+  "visibility": "private",
+  "description": "Sample project for testing ADO to GitHub migration tools",
+  "users": [
+    "user1@example.com",
+    "user2@example.com",
+    "user3@example.com",
+    "user4@example.com",
+    "user5@example.com"
+  ],
+  "teams": [
+    {
+      "name": "Team Alpha",
+      "areaPath": "Team Alpha",
+      "description": "Frontend development team"
+    },
+    {
+      "name": "Team Beta",
+      "areaPath": "Team Beta",
+      "description": "Backend development team"
+    },
+    {
+      "name": "Team Gamma",
+      "areaPath": "Team Gamma",
+      "description": "Infrastructure and DevOps team"
+    },
+    {
+      "name": "Team Delta",
+      "areaPath": "Team Delta",
+      "description": "QA and testing team"
+    }
+  ],
+  "iterations": {
+    "year": 2025,
+    "sprintCount": 12,
+    "sprintLengthWeeks": 2,
+    "startDate": "2025-01-06"
+  },
+  "workItemCounts": {
+    "epics": 5,
+    "features": 15,
+    "userStories": 50,
+    "tasks": 100,
+    "bugs": 30,
+    "testCases": 40
+  },
+  "repositories": [
+    {
+      "name": "main-app",
+      "description": "Main application repository",
+      "defaultBranch": "main"
+    },
+    {
+      "name": "infrastructure",
+      "description": "Infrastructure as Code repository",
+      "defaultBranch": "main"
+    },
+    {
+      "name": "documentation",
+      "description": "Project documentation",
+      "defaultBranch": "main"
+    }
+  ],
+  "pipelines": {
+    "buildPipelineCount": 5,
+    "releasePipelineCount": 5,
+    "environments": ["Development", "QA", "Staging", "Production"]
+  }
+}

@@ -1,0 +1,509 @@
+# Continuous Deployment (CD) Pipeline Definitions
+# This file contains comprehensive CD pipeline templates for Azure DevOps
+
+## 1. Main Application CD Pipeline (YAML Multi-Stage)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: buildPipeline
+    source: 'Main-App-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy to Development'
+  jobs:
+  - deployment: DeployWeb
+    displayName: 'Deploy Web App'
+    environment: 'Development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy Azure App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: 'myapp-dev'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+          
+          - task: AzureAppServiceManage@0
+            displayName: 'Restart App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              Action: 'Restart Azure App Service'
+              WebAppName: 'myapp-dev'
+          
+          - script: |
+              curl -f https://myapp-dev.azurewebsites.net/health || exit 1
+            displayName: 'Health Check'
+
+- stage: Deploy_QA
+  displayName: 'Deploy to QA'
+  dependsOn: Deploy_Dev
+  condition: succeeded()
+  jobs:
+  - deployment: DeployWeb
+    displayName: 'Deploy Web App'
+    environment: 'QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy Azure App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: 'myapp-qa'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+              deploymentMethod: 'zipDeploy'
+
+- stage: Deploy_Staging
+  displayName: 'Deploy to Staging'
+  dependsOn: Deploy_QA
+  condition: succeeded()
+  jobs:
+  - deployment: DeployWeb
+    displayName: 'Deploy Web App'
+    environment: 'Staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy to Staging Slot'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: 'myapp-staging'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+
+- stage: Deploy_Production
+  displayName: 'Deploy to Production'
+  dependsOn: Deploy_Staging
+  condition: succeeded()
+  jobs:
+  - deployment: DeployWeb
+    displayName: 'Deploy Web App'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy to Production'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: 'myapp-prod'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+```
+
+## 2. API Service CD Pipeline (YAML)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: apiCiBuild
+    source: 'API-Service-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy API to Dev'
+  jobs:
+  - deployment: DeployAPI
+    displayName: 'Deploy API Service'
+    environment: 'API-Dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'functionApp'
+              appName: 'api-service-dev'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+
+- stage: Deploy_QA
+  displayName: 'Deploy API to QA'
+  dependsOn: Deploy_Dev
+  jobs:
+  - deployment: DeployAPI
+    displayName: 'Deploy API Service'
+    environment: 'API-QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'functionApp'
+              appName: 'api-service-qa'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+
+- stage: Deploy_Production
+  displayName: 'Deploy API to Production'
+  dependsOn: Deploy_QA
+  jobs:
+  - deployment: DeployAPI
+    displayName: 'Deploy API Service'
+    environment: 'API-Production'
+    strategy:
+      canary:
+        increments: [10, 50, 100]
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'functionApp'
+              appName: 'api-service-prod'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+```
+
+## 3. Auth Service CD Pipeline (YAML)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: authCiBuild
+    source: 'Auth-Service-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+  kubernetesServiceConnection: 'AKS-Connection'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy Auth Service to Dev'
+  jobs:
+  - deployment: DeployK8s
+    displayName: 'Deploy to AKS Dev'
+    environment: 'Auth-Dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: 'Deploy to Kubernetes'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: 'auth-dev'
+              manifests: |
+                $(Pipeline.Workspace)/manifests/deployment.yaml
+                $(Pipeline.Workspace)/manifests/service.yaml
+              containers: 'myacr.azurecr.io/auth-service:$(Build.BuildId)'
+
+- stage: Deploy_QA
+  displayName: 'Deploy Auth Service to QA'
+  dependsOn: Deploy_Dev
+  jobs:
+  - deployment: DeployK8s
+    displayName: 'Deploy to AKS QA'
+    environment: 'Auth-QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: 'Deploy to Kubernetes'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: 'auth-qa'
+              manifests: |
+                $(Pipeline.Workspace)/manifests/deployment.yaml
+                $(Pipeline.Workspace)/manifests/service.yaml
+
+- stage: Deploy_Production
+  displayName: 'Deploy Auth Service to Production'
+  dependsOn: Deploy_QA
+  jobs:
+  - deployment: DeployK8s
+    displayName: 'Deploy to AKS Production'
+    environment: 'Auth-Production'
+    strategy:
+      rolling:
+        maxParallel: 2
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: 'Deploy to Kubernetes'
+            inputs:
+              action: 'deploy'
+              kubernetesServiceConnection: '$(kubernetesServiceConnection)'
+              namespace: 'auth-prod'
+              manifests: |
+                $(Pipeline.Workspace)/manifests/deployment.yaml
+```
+
+## 4. Infrastructure Deploy CD Pipeline (YAML)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: infraCiBuild
+    source: 'Infrastructure-Validation-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+  terraformVersion: '1.6.0'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy Infrastructure to Dev'
+  jobs:
+  - deployment: TerraformDeploy
+    displayName: 'Terraform Apply Dev'
+    environment: 'Infrastructure-Dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: '$(terraformVersion)'
+          
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(Pipeline.Workspace)/terraform'
+              backendServiceArm: '$(azureSubscription)'
+
+- stage: Deploy_Staging
+  displayName: 'Deploy Infrastructure to Staging'
+  dependsOn: Deploy_Dev
+  jobs:
+  - deployment: TerraformDeploy
+    displayName: 'Terraform Apply Staging'
+    environment: 'Infrastructure-Staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(Pipeline.Workspace)/terraform'
+
+- stage: Deploy_Production
+  displayName: 'Deploy Infrastructure to Production'
+  dependsOn: Deploy_Staging
+  jobs:
+  - deployment: TerraformDeploy
+    displayName: 'Terraform Apply Production'
+    environment: 'Infrastructure-Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: ManualValidation@0
+            displayName: 'Manual Approval for Production'
+            inputs:
+              notifyUsers: 'release-managers@example.com'
+          
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+```
+
+## 5. Database Migration CD Pipeline (YAML)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: appBuild
+    source: 'Main-App-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+
+stages:
+- stage: Migrate_Dev
+  displayName: 'Database Migration - Dev'
+  jobs:
+  - deployment: RunMigrations
+    displayName: 'Run DB Migrations'
+    environment: 'Database-Dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Apply Database Migrations'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              AuthenticationType: 'server'
+              ServerName: 'sqlserver-dev.database.windows.net'
+              DatabaseName: 'appdb-dev'
+              SqlUsername: 'sqladmin'
+              SqlPassword: '$(SQL_ADMIN_PASSWORD)'
+              DeploymentAction: 'Execute'
+              SqlFile: '$(Pipeline.Workspace)/migrations/migration.sql'
+
+- stage: Migrate_QA
+  displayName: 'Database Migration - QA'
+  dependsOn: Migrate_Dev
+  jobs:
+  - deployment: RunMigrations
+    displayName: 'Run DB Migrations'
+    environment: 'Database-QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Apply Database Migrations'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              ServerName: 'sqlserver-qa.database.windows.net'
+              DatabaseName: 'appdb-qa'
+
+- stage: Migrate_Production
+  displayName: 'Database Migration - Production'
+  dependsOn: Migrate_QA
+  jobs:
+  - deployment: RunMigrations
+    displayName: 'Run DB Migrations'
+    environment: 'Database-Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: ManualValidation@0
+            displayName: 'Approve Production Migration'
+            inputs:
+              notifyUsers: 'dba-team@example.com'
+          
+          - task: SqlAzureDacpacDeployment@1
+            displayName: 'Apply Database Migrations'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              ServerName: 'sqlserver-prod.database.windows.net'
+              DatabaseName: 'appdb-prod'
+```
+
+## 6. Container Deploy CD Pipeline (YAML)
+```yaml
+trigger: none
+
+resources:
+  pipelines:
+  - pipeline: dockerBuild
+    source: 'Docker-Build-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+  kubernetesConnection: 'AKS-Connection'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy Containers to Dev'
+  jobs:
+  - deployment: DeployContainers
+    displayName: 'Deploy to AKS Dev'
+    environment: 'Containers-Dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: HelmDeploy@0
+            displayName: 'Helm Upgrade'
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceConnection: '$(kubernetesConnection)'
+              namespace: 'dev'
+              command: 'upgrade'
+              chartType: 'FilePath'
+              releaseName: 'myapp-dev'
+              install: true
+
+- stage: Deploy_QA
+  displayName: 'Deploy Containers to QA'
+  dependsOn: Deploy_Dev
+  jobs:
+  - deployment: DeployContainers
+    displayName: 'Deploy to AKS QA'
+    environment: 'Containers-QA'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: HelmDeploy@0
+            displayName: 'Helm Upgrade'
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceConnection: '$(kubernetesConnection)'
+              namespace: 'qa'
+              command: 'upgrade'
+
+- stage: Deploy_Production
+  displayName: 'Deploy Containers to Production'
+  dependsOn: Deploy_QA
+  jobs:
+  - deployment: DeployContainers
+    displayName: 'Deploy to AKS Production'
+    environment: 'Containers-Production'
+    strategy:
+      canary:
+        increments: [25, 50, 100]
+        deploy:
+          steps:
+          - task: HelmDeploy@0
+            displayName: 'Helm Upgrade - Canary'
+            inputs:
+              connectionType: 'Kubernetes Service Connection'
+              kubernetesServiceConnection: '$(kubernetesConnection)'
+              namespace: 'production'
+              command: 'upgrade'
+```

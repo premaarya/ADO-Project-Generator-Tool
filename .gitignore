@@ -1,0 +1,79 @@
+# Azure DevOps Sample Generator - Git Ignore
+
+# Configuration files with sensitive data
+utils/config.json
+**/config.local.json
+*.config.local.*
+
+# Personal Access Tokens
+*.pat
+*.token
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# PowerShell module cache
+PSGetModuleInfo.xml
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Generated output
+output/
+exports/
+*.export.*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Backup files
+*.bak
+*.backup
+*_backup.*
+
+# Test output
+test-results/
+TestResults/
+
+# Build artifacts (if any)
+bin/
+obj/
+dist/
+build/
+
+# Node modules (if any JS tools added)
+node_modules/
+package-lock.json
+
+# Python (if any Python scripts added)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+
+# Keep example/template config
+!utils/config.json.example
+!**/*.template.*

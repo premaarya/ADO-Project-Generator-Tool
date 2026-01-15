@@ -1,0 +1,148 @@
+{
+  "workItemTemplates": {
+    "epic": {
+      "title": "Epic: {title}",
+      "description": "{description}",
+      "fields": {
+        "System.State": "New",
+        "Microsoft.VSTS.Common.Priority": 2,
+        "Microsoft.VSTS.Common.Risk": "Medium",
+        "Microsoft.VSTS.Common.BusinessValue": 500,
+        "Microsoft.VSTS.Scheduling.Effort": 40
+      },
+      "tags": ["Epic", "Strategic"]
+    },
+    "feature": {
+      "title": "Feature: {title}",
+      "description": "{description}",
+      "fields": {
+        "System.State": "New",
+        "Microsoft.VSTS.Common.Priority": 2,
+        "Microsoft.VSTS.Scheduling.Effort": 13,
+        "Microsoft.VSTS.Scheduling.TargetDate": "{targetDate}"
+      },
+      "tags": ["Feature"]
+    },
+    "userStory": {
+      "title": "{title}",
+      "description": "As a {persona}, I want {action} so that {benefit}",
+      "acceptanceCriteria": "Given {precondition}\nWhen {action}\nThen {expectedResult}",
+      "fields": {
+        "System.State": "New",
+        "Microsoft.VSTS.Common.Priority": 2,
+        "Microsoft.VSTS.Scheduling.StoryPoints": 5,
+        "Microsoft.VSTS.Common.AcceptanceCriteria": "{acceptanceCriteria}"
+      },
+      "tags": ["User Story"]
+    },
+    "task": {
+      "title": "{title}",
+      "description": "{description}",
+      "fields": {
+        "System.State": "To Do",
+        "Microsoft.VSTS.Scheduling.OriginalEstimate": 8,
+        "Microsoft.VSTS.Scheduling.RemainingWork": 8,
+        "Microsoft.VSTS.Scheduling.CompletedWork": 0,
+        "Microsoft.VSTS.Common.Activity": "Development"
+      },
+      "tags": ["Task"]
+    },
+    "bug": {
+      "title": "Bug: {title}",
+      "description": "{description}",
+      "reproSteps": "1. {step1}\n2. {step2}\n3. {step3}\nExpected: {expected}\nActual: {actual}",
+      "systemInfo": "OS: Windows 11\nBrowser: Chrome 120\nEnvironment: {environment}",
+      "fields": {
+        "System.State": "New",
+        "Microsoft.VSTS.Common.Priority": 2,
+        "Microsoft.VSTS.Common.Severity": "3 - Medium",
+        "Microsoft.VSTS.TCM.ReproSteps": "{reproSteps}",
+        "Microsoft.VSTS.TCM.SystemInfo": "{systemInfo}"
+      },
+      "tags": ["Bug", "Defect"]
+    }
+  },
+  "sampleWorkItems": [
+    {
+      "type": "Epic",
+      "title": "User Authentication and Authorization System",
+      "description": "Implement a comprehensive authentication and authorization system with SSO, MFA, and role-based access control",
+      "priority": 1,
+      "risk": "High",
+      "businessValue": 1000,
+      "tags": ["Security", "Epic", "P1"]
+    },
+    {
+      "type": "Epic",
+      "title": "Analytics and Reporting Dashboard",
+      "description": "Build an interactive dashboard with real-time analytics, custom reports, and data visualization capabilities",
+      "priority": 2,
+      "risk": "Medium",
+      "businessValue": 800,
+      "tags": ["Analytics", "Epic", "Dashboard"]
+    },
+    {
+      "type": "Feature",
+      "title": "Single Sign-On (SSO) Integration",
+      "description": "Enable users to authenticate using SSO providers like Azure AD, Okta, and Google Workspace",
+      "priority": 1,
+      "effort": 21,
+      "tags": ["Security", "SSO", "Feature"]
+    },
+    {
+      "type": "User Story",
+      "title": "User can login with Microsoft credentials",
+      "description": "As a user, I want to login using my Microsoft account so that I don't need to create a separate password",
+      "acceptanceCriteria": "Given I'm on the login page\nWhen I click 'Login with Microsoft'\nThen I'm redirected to Microsoft login\nAnd after successful authentication, I'm logged into the application",
+      "storyPoints": 8,
+      "tags": ["Authentication", "Microsoft", "SSO"]
+    },
+    {
+      "type": "Task",
+      "title": "Configure Azure AD application registration",
+      "description": "Register the application in Azure AD and configure redirect URIs, API permissions, and client secrets",
+      "originalEstimate": 4,
+      "activity": "Development",
+      "tags": ["Configuration", "Azure AD"]
+    },
+    {
+      "type": "Bug",
+      "title": "Login fails with special characters in password",
+      "description": "Users cannot login when their password contains special characters like @ or #",
+      "reproSteps": "1. Create user with password containing '@' symbol\n2. Navigate to login page\n3. Enter username and password\n4. Click Login\nExpected: User should be logged in\nActual: Error message 'Invalid credentials' displayed",
+      "severity": "2 - High",
+      "priority": 1,
+      "tags": ["Bug", "Authentication", "Critical"]
+    }
+  ],
+  "personas": [
+    "end user",
+    "administrator",
+    "developer",
+    "team lead",
+    "product owner",
+    "stakeholder",
+    "customer",
+    "support agent"
+  ],
+  "actions": [
+    "view the dashboard",
+    "create a report",
+    "manage user permissions",
+    "configure settings",
+    "export data",
+    "receive notifications",
+    "track progress",
+    "assign work items"
+  ],
+  "benefits": [
+    "I can make informed decisions",
+    "the system remains secure",
+    "I can complete my tasks faster",
+    "I have better visibility",
+    "I can collaborate effectively",
+    "the team stays synchronized",
+    "we meet compliance requirements",
+    "users have a better experience"
+  ]
+}

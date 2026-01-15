@@ -1,0 +1,193 @@
+{
+  "testPlanTemplates": [
+    {
+      "name": "Integration Test Plan",
+      "description": "Comprehensive integration testing for API endpoints and service communication",
+      "areaPath": "Team Beta",
+      "iteration": "2025\\Sprint 3",
+      "state": "Active"
+    },
+    {
+      "name": "Regression Test Plan",
+      "description": "Automated regression tests to ensure no breaking changes in existing functionality",
+      "areaPath": "Team Delta",
+      "iteration": "2025\\Sprint 3",
+      "state": "Active"
+    },
+    {
+      "name": "User Acceptance Test Plan",
+      "description": "UAT scenarios for validating business requirements and user workflows",
+      "areaPath": "Team Alpha",
+      "iteration": "2025\\Sprint 4",
+      "state": "Planning"
+    }
+  ],
+  "testCaseTemplates": [
+    {
+      "title": "Verify user login with valid credentials",
+      "steps": [
+        {
+          "action": "Navigate to the login page",
+          "expectedResult": "Login page is displayed with username and password fields"
+        },
+        {
+          "action": "Enter valid username and password",
+          "expectedResult": "Fields accept the input"
+        },
+        {
+          "action": "Click the Login button",
+          "expectedResult": "User is authenticated and redirected to dashboard"
+        }
+      ],
+      "priority": 1,
+      "automationStatus": "Automated",
+      "tags": ["Authentication", "Smoke Test"]
+    },
+    {
+      "title": "Verify API returns correct response for GET request",
+      "steps": [
+        {
+          "action": "Send GET request to /api/users endpoint",
+          "expectedResult": "HTTP 200 status code returned"
+        },
+        {
+          "action": "Validate response schema",
+          "expectedResult": "Response contains required fields: id, name, email"
+        },
+        {
+          "action": "Verify response data types",
+          "expectedResult": "All fields have correct data types"
+        }
+      ],
+      "priority": 1,
+      "automationStatus": "Automated",
+      "tags": ["API", "Integration"]
+    },
+    {
+      "title": "Verify form validation for required fields",
+      "steps": [
+        {
+          "action": "Open the user registration form",
+          "expectedResult": "Form is displayed with all required fields marked"
+        },
+        {
+          "action": "Leave required fields empty and submit",
+          "expectedResult": "Validation errors displayed for each empty required field"
+        },
+        {
+          "action": "Fill all required fields and submit",
+          "expectedResult": "Form submits successfully and confirmation message shown"
+        }
+      ],
+      "priority": 2,
+      "automationStatus": "Not Automated",
+      "tags": ["UI", "Validation"]
+    },
+    {
+      "title": "Verify data export functionality",
+      "steps": [
+        {
+          "action": "Navigate to the reports page",
+          "expectedResult": "Reports page loads with export options"
+        },
+        {
+          "action": "Select date range and click Export to CSV",
+          "expectedResult": "CSV file downloads to local machine"
+        },
+        {
+          "action": "Open the CSV file",
+          "expectedResult": "File contains correct data with proper formatting"
+        }
+      ],
+      "priority": 2,
+      "automationStatus": "Not Automated",
+      "tags": ["Export", "Reports", "CSV"]
+    }
+  ],
+  "testSuiteTypes": [
+    {
+      "type": "Static",
+      "name": "Smoke Tests",
+      "description": "Quick validation tests for critical functionality"
+    },
+    {
+      "type": "Static",
+      "name": "API Tests",
+      "description": "Comprehensive API endpoint testing"
+    },
+    {
+      "type": "RequirementBased",
+      "name": "User Stories Validation",
+      "description": "Test cases linked to user stories"
+    }
+  ],
+  "testConfigurationTemplates": [
+    {
+      "name": "Windows 11 - Chrome",
+      "values": [
+        { "name": "Operating System", "value": "Windows 11" },
+        { "name": "Browser", "value": "Chrome 120" }
+      ]
+    },
+    {
+      "name": "Windows 11 - Edge",
+      "values": [
+        { "name": "Operating System", "value": "Windows 11" },
+        { "name": "Browser", "value": "Edge 120" }
+      ]
+    },
+    {
+      "name": "macOS - Safari",
+      "values": [
+        { "name": "Operating System", "value": "macOS Sonoma" },
+        { "name": "Browser", "value": "Safari 17" }
+      ]
+    },
+    {
+      "name": "Mobile - iOS",
+      "values": [
+        { "name": "Device", "value": "iPhone 15" },
+        { "name": "OS Version", "value": "iOS 17" }
+      ]
+    }
+  ],
+  "testResultStates": [
+    "Passed",
+    "Failed",
+    "Blocked",
+    "Not Applicable",
+    "Paused"
+  ],
+  "sharedSteps": [
+    {
+      "title": "Login to application",
+      "steps": [
+        {
+          "action": "Open the application URL",
+          "expectedResult": "Application home page loads"
+        },
+        {
+          "action": "Click Login button",
+          "expectedResult": "Login page is displayed"
+        },
+        {
+          "action": "Enter credentials and submit",
+          "expectedResult": "User is logged in successfully"
+        }
+      ]
+    },
+    {
+      "title": "Navigate to admin panel",
+      "steps": [
+        {
+          "action": "Click on user profile menu",
+          "expectedResult": "Dropdown menu appears"
+        },
+        {
+          "action": "Select 'Admin Panel' option",
+          "expectedResult": "Admin panel page loads"
+        }
+      ]
+    }
+  ]
+}

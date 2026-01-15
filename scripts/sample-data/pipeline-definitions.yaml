@@ -1,0 +1,812 @@
+# Build Pipeline Templates
+
+## 1. Main Application CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - src/*
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  buildPlatform: 'Any CPU'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Use .NET 8.0'
+      inputs:
+        packageType: 'sdk'
+        version: '8.0.x'
+    
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore NuGet Packages'
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+    
+    - task: DotNetCoreCLI@2
+      displayName: 'Build Solution'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+    
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Unit Tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests.csproj'
+        arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+    
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Code Coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+    
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Application'
+      inputs:
+        command: 'publish'
+        publishWebProjects: true
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+```
+
+## 2. Docker Build CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - Dockerfile
+    - src/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  dockerRegistry: 'myacr.azurecr.io'
+  imageName: 'main-app'
+  imageTag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: 'Build Docker Image'
+  jobs:
+  - job: DockerBuild
+    displayName: 'Build and Push Docker Image'
+    steps:
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: 'build'
+        repository: '$(dockerRegistry)/$(imageName)'
+        dockerfile: 'Dockerfile'
+        tags: |
+          $(imageTag)
+          latest
+    
+    - task: Docker@2
+      displayName: 'Run Container Security Scan'
+      inputs:
+        command: 'scan'
+        arguments: '$(dockerRegistry)/$(imageName):$(imageTag)'
+    
+    - task: Docker@2
+      displayName: 'Push Docker Image'
+      inputs:
+        command: 'push'
+        containerRegistry: 'Azure-Container-Registry'
+        repository: '$(dockerRegistry)/$(imageName)'
+        tags: |
+          $(imageTag)
+          latest
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Docker Compose'
+      inputs:
+        PathtoPublish: 'docker-compose.yml'
+        ArtifactName: 'docker-configs'
+```
+
+## 3. API Service CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - api-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build API Service'
+  jobs:
+  - job: Build
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '$(nodeVersion)'
+    
+    - script: |
+        npm ci
+      displayName: 'Install Dependencies'
+      workingDirectory: 'api-service'
+    
+    - script: |
+        npm run lint
+      displayName: 'Run ESLint'
+      workingDirectory: 'api-service'
+    
+    - script: |
+        npm run test:unit
+      displayName: 'Run Unit Tests'
+      workingDirectory: 'api-service'
+    
+    - script: |
+        npm run test:integration
+      displayName: 'Run Integration Tests'
+      workingDirectory: 'api-service'
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/test-results.xml'
+    
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml'
+    
+    - script: |
+        npm run build
+      displayName: 'Build Application'
+      workingDirectory: 'api-service'
+    
+    - task: ArchiveFiles@2
+      displayName: 'Archive Build Output'
+      inputs:
+        rootFolderOrFile: 'api-service/dist'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/api-service-$(Build.BuildId).zip'
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'api-service'
+```
+
+## 4. Auth Service CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - auth-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Auth Service'
+  jobs:
+  - job: Build
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install Dependencies'
+      workingDirectory: 'auth-service'
+    
+    - script: |
+        pip install pylint flake8 black
+        black --check auth-service/
+        flake8 auth-service/ --max-line-length=120
+        pylint auth-service/**/*.py
+      displayName: 'Run Code Quality Checks'
+    
+    - script: |
+        pip install pytest pytest-cov pytest-asyncio
+        pytest auth-service/tests/ --cov=auth-service --cov-report=xml --cov-report=html --junitxml=test-results.xml
+      displayName: 'Run Tests with Coverage'
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/test-results.xml'
+    
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Coverage Results'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+    
+    - script: |
+        pip install wheel
+        python setup.py bdist_wheel
+      displayName: 'Build Package'
+      workingDirectory: 'auth-service'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'auth-service/dist'
+        ArtifactName: 'auth-service'
+```
+
+## 5. Infrastructure Validation CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - terraform/*
+    - bicep/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  terraformVersion: '1.6.0'
+
+stages:
+- stage: Validate
+  displayName: 'Validate Infrastructure Code'
+  jobs:
+  - job: TerraformValidate
+    displayName: 'Terraform Validation'
+    steps:
+    - task: TerraformInstaller@0
+      displayName: 'Install Terraform'
+      inputs:
+        terraformVersion: '$(terraformVersion)'
+    
+    - script: |
+        terraform fmt -check -recursive
+      displayName: 'Terraform Format Check'
+      workingDirectory: 'terraform'
+    
+    - script: |
+        terraform init -backend=false
+      displayName: 'Terraform Init'
+      workingDirectory: 'terraform'
+    
+    - script: |
+        terraform validate
+      displayName: 'Terraform Validate'
+      workingDirectory: 'terraform'
+    
+    - script: |
+        terraform plan -out=tfplan
+      displayName: 'Terraform Plan'
+      workingDirectory: 'terraform'
+      env:
+        ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+        ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+        ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+        ARM_TENANT_ID: $(ARM_TENANT_ID)
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Terraform Plan'
+      inputs:
+        PathtoPublish: 'terraform/tfplan'
+        ArtifactName: 'terraform-plan'
+  
+  - job: BicepValidate
+    displayName: 'Bicep Validation'
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Install Bicep'
+      inputs:
+        azureSubscription: 'Azure-Subscription'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az bicep install
+    
+    - script: |
+        az bicep build --file main.bicep
+      displayName: 'Bicep Build'
+      workingDirectory: 'bicep'
+    
+    - script: |
+        az deployment group validate --resource-group rg-validation --template-file main.bicep
+      displayName: 'Bicep Validate'
+      workingDirectory: 'bicep'
+```
+
+## 6. Security Scan CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - release/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: SecurityScan
+  displayName: 'Security Scanning'
+  jobs:
+  - job: DependencyScan
+    displayName: 'Dependency Vulnerability Scan'
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '20.x'
+    
+    - script: |
+        npm install -g npm-audit-resolver
+        npm audit --json > audit-results.json
+        npm audit
+      displayName: 'NPM Audit'
+      continueOnError: true
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'audit-results.json'
+        ArtifactName: 'security-scan'
+  
+  - job: CodeScan
+    displayName: 'SAST Code Scanning'
+    steps:
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud'
+      inputs:
+        SonarCloud: 'SonarCloud-Connection'
+        organization: 'my-org'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: 'my-project'
+    
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run Code Analysis'
+    
+    - task: SonarCloudPublish@1
+      displayName: 'Publish Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'
+  
+  - job: SecretScan
+    displayName: 'Secret Detection'
+    steps:
+    - script: |
+        docker run --rm -v $(System.DefaultWorkingDirectory):/src trufflesecurity/trufflehog:latest filesystem /src --json > secrets-scan.json
+      displayName: 'TruffleHog Secret Scan'
+      continueOnError: true
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'secrets-scan.json'
+        ArtifactName: 'secrets-scan'
+```
+
+## 7. Code Quality CI Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    exclude:
+    - docs/*
+    - README.md
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: CodeQuality
+  displayName: 'Code Quality Analysis'
+  jobs:
+  - job: StaticAnalysis
+    displayName: 'Static Code Analysis'
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '20.x'
+    
+    - script: |
+        npm install -g eslint prettier typescript
+        eslint . --ext .js,.ts,.tsx --format json -o eslint-report.json
+      displayName: 'ESLint Analysis'
+      continueOnError: true
+    
+    - script: |
+        prettier --check "**/*.{js,ts,tsx,json,css,md}"
+      displayName: 'Prettier Format Check'
+      continueOnError: true
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'eslint-report.json'
+        ArtifactName: 'code-quality'
+  
+  - job: Complexity
+    displayName: 'Code Complexity Analysis'
+    steps:
+    - script: |
+        npm install -g complexity-report
+        cr --format json src/ > complexity-report.json
+      displayName: 'Complexity Analysis'
+      continueOnError: true
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'complexity-report.json'
+        ArtifactName: 'complexity-report'
+  
+  - job: Documentation
+    displayName: 'Documentation Coverage'
+    steps:
+    - script: |
+        npm install -g jsdoc
+        jsdoc -c jsdoc.json
+      displayName: 'Generate JSDoc'
+      continueOnError: true
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'docs/'
+        ArtifactName: 'documentation'
+```
+      inputs:
+        versionSpec: $(nodeVersion)
+    
+    - script: npm ci
+      displayName: 'Install Dependencies'
+      workingDirectory: 'frontend'
+    
+    - script: npm run lint
+      displayName: 'Run ESLint'
+      workingDirectory: 'frontend'
+    
+    - script: npm run test:ci
+      displayName: 'Run Tests'
+      workingDirectory: 'frontend'
+    
+    - script: npm run build
+      displayName: 'Build Application'
+      workingDirectory: 'frontend'
+      env:
+        NODE_ENV: production
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/junit.xml'
+        mergeTestResults: true
+    
+    - task: ArchiveFiles@2
+      displayName: 'Archive Build Output'
+      inputs:
+        rootFolderOrFile: 'frontend/dist'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/frontend-$(Build.BuildId).zip'
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'frontend'
+```
+
+## Docker Build Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  dockerRegistry: 'myregistry.azurecr.io'
+  imageName: 'myapp'
+  imageTag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: 'Build Docker Image'
+  jobs:
+  - job: Docker
+    steps:
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        command: 'build'
+        Dockerfile: '**/Dockerfile'
+        tags: |
+          $(dockerRegistry)/$(imageName):$(imageTag)
+          $(dockerRegistry)/$(imageName):latest
+    
+    - task: Docker@2
+      displayName: 'Push Docker Image'
+      inputs:
+        command: 'push'
+        containerRegistry: 'DockerRegistryServiceConnection'
+        repository: '$(imageName)'
+        tags: |
+          $(imageTag)
+          latest
+    
+    - script: |
+        docker run --rm $(dockerRegistry)/$(imageName):$(imageTag) npm test
+      displayName: 'Run Tests in Container'
+```
+
+## Python Build Pipeline (YAML)
+```yaml
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Python Application'
+  jobs:
+  - job: Build
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install Dependencies'
+    
+    - script: |
+        pip install pytest pytest-cov pylint
+        pylint src/**/*.py
+      displayName: 'Run Linting'
+    
+    - script: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html
+      displayName: 'Run Tests with Coverage'
+    
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Coverage Results'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/test-results.xml'
+    
+    - script: |
+        pip install wheel
+        python setup.py bdist_wheel
+      displayName: 'Build Wheel Package'
+    
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'dist'
+        ArtifactName: 'python-package'
+```
+
+## Multi-Stage Release Pipeline (Classic Definition)
+```json
+{
+  "name": "Multi-Environment Release",
+  "source": "Build Pipeline",
+  "stages": [
+    {
+      "name": "Development",
+      "conditions": [],
+      "preDeployApprovals": [],
+      "postDeployApprovals": [],
+      "deployPhases": [
+        {
+          "deploymentInput": {
+            "skipArtifactsDownload": false,
+            "timeoutInMinutes": 0,
+            "queueId": 1
+          },
+          "tasks": [
+            {
+              "taskId": "Azure App Service Deploy",
+              "inputs": {
+                "azureSubscription": "Azure-Dev",
+                "appName": "myapp-dev",
+                "package": "$(System.DefaultWorkingDirectory)/**/*.zip"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "QA",
+      "conditions": [
+        {
+          "conditionType": "environmentState",
+          "name": "Development",
+          "value": "4"
+        }
+      ],
+      "preDeployApprovals": [
+        {
+          "approvalType": "userApproval",
+          "approvers": ["qa-team@example.com"]
+        }
+      ],
+      "deployPhases": [
+        {
+          "tasks": [
+            {
+              "taskId": "Azure App Service Deploy",
+              "inputs": {
+                "azureSubscription": "Azure-QA",
+                "appName": "myapp-qa",
+                "package": "$(System.DefaultWorkingDirectory)/**/*.zip"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Production",
+      "conditions": [
+        {
+          "conditionType": "environmentState",
+          "name": "QA",
+          "value": "4"
+        }
+      ],
+      "preDeployApprovals": [
+        {
+          "approvalType": "userApproval",
+          "approvers": ["release-managers@example.com"]
+        }
+      ],
+      "preDeploymentGates": {
+        "enabled": true,
+        "gates": [
+          {
+            "taskId": "Query Work Items",
+            "inputs": {
+              "queryId": "Critical-Bugs-Query"
+            }
+          }
+        ]
+      },
+      "deployPhases": [
+        {
+          "tasks": [
+            {
+              "taskId": "Azure App Service Deploy",
+              "inputs": {
+                "azureSubscription": "Azure-Prod",
+                "appName": "myapp-prod",
+                "package": "$(System.DefaultWorkingDirectory)/**/*.zip",
+                "deploymentMethod": "zipDeploy",
+                "takeAppOfflineFlag": true
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+# Continuous Deployment (CD) Pipelines
+
+## 1. Main Application CD Pipeline (YAML Multi-Stage)
+``yaml
+trigger: none # CD pipelines are typically triggered by CI completion
+
+resources:
+  pipelines:
+  - pipeline: buildPipeline
+    source: 'Main-App-CI'
+    trigger:
+      branches:
+        include:
+        - main
+
+variables:
+  azureSubscription: 'Azure-Service-Connection'
+
+stages:
+- stage: Deploy_Dev
+  displayName: 'Deploy to Development'
+  jobs:
+  - deployment: DeployWeb
+    displayName: 'Deploy Web App'
+    environment: 'Development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy Azure App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appType: 'webApp'
+              WebAppName: 'myapp-dev'
+              package: '$(Pipeline.Workspace)/**/*.zip'
+              
+          - task: AzureAppServiceManage@0
+            displayName: 'Restart App Service'
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              Action: 'Restart Azure App Service'
+              WebAppName: 'myapp-dev'
+``
