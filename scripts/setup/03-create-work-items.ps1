@@ -562,66 +562,73 @@ Write-Host "  ✓ Added comments to $(($itemsToComment.Count)) work items" -Fore
 # ===== ADD WORK ITEM ATTACHMENTS =====
 Write-Host "`n[7/8] Adding attachments to work items..." -ForegroundColor Cyan
 
-# Create sample attachment content
-$sampleDocContent = @"
-# Requirements Document
+# Get image files from sample-data/resources folder
+$resourcesFolder = "$PSScriptRoot\..\sample-data\resources"
+$imageFiles = @()
 
-## Overview
-This document outlines the requirements for this work item.
+if (Test-Path $resourcesFolder) {
+    $imageFiles = Get-ChildItem -Path $resourcesFolder -Filter "*.jpeg" -File | Select-Object -First 6
+    Write-Host "  Found $($imageFiles.Count) image files in resources folder" -ForegroundColor Cyan
+} else {
+    Write-Host "  Warning: Resources folder not found at $resourcesFolder" -ForegroundColor Yellow
+}
 
-## Functional Requirements
-1. User authentication
-2. Data validation
-3. Error handling
+# Select exactly 5 user stories to attach images
+$attachmentCount = [Math]::Min(5, $userStoryIds.Count)
+$itemsToAttach = $userStoryIds | Get-Random -Count $attachmentCount
 
-## Non-Functional Requirements
-1. Performance: Response time < 2s
-2. Security: OAuth 2.0 implementation
-3. Scalability: Support 10,000 concurrent users
-"@
+Write-Host "  Attaching images to $attachmentCount work items..." -ForegroundColor White
 
-$sampleImageContent = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="  # 1x1 red pixel PNG
+$attachmentHeaders = @{
+    "Authorization" = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($config.pat)")))"
+    "Content-Type" = "application/octet-stream"
+}
 
-# Add attachments to a subset of user stories
-$itemsToAttach = $userStoryIds | Get-Random -Count ([Math]::Min(10, $userStoryIds.Count))
-
-foreach ($workItemId in $itemsToAttach) {
-    # Upload document attachment
-    $docBytes = [System.Text.Encoding]::UTF8.GetBytes($sampleDocContent)
-    $docBase64 = [Convert]::ToBase64String($docBytes)
+$attachedCount = 0
+for ($i = 0; $i -lt $itemsToAttach.Count; $i++) {
+    $workItemId = $itemsToAttach[$i]
     
-    $attachmentUri = "https://dev.azure.com/$org/$project/_apis/wit/attachments?fileName=requirements.md&api-version=7.0"
-    $attachmentHeaders = @{
-        "Authorization" = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($config.pat)")))"
-        "Content-Type" = "application/octet-stream"
-    }
-    
-    try {
-        $uploadedAttachment = Invoke-RestMethod -Uri $attachmentUri -Method POST -Headers $attachmentHeaders -Body $docBytes
+    # Use a different image file for each work item (cycle through available images)
+    if ($imageFiles.Count -gt 0) {
+        $imageFile = $imageFiles[$i % $imageFiles.Count]
+        $fileName = $imageFile.Name
+        $filePath = $imageFile.FullName
         
-        # Link attachment to work item
-        $linkBody = @(
-            @{
-                op = "add"
-                path = "/relations/-"
-                value = @{
-                    rel = "AttachedFile"
-                    url = $uploadedAttachment.url
-                    attributes = @{
-                        comment = "Requirements document"
+        try {
+            # Read file content
+            $fileBytes = [System.IO.File]::ReadAllBytes($filePath)
+            
+            # Upload attachment
+            $attachmentUri = "https://dev.azure.com/$org/$project/_apis/wit/attachments?fileName=$fileName&api-version=7.0"
+            $uploadedAttachment = Invoke-RestMethod -Uri $attachmentUri -Method POST -Headers $attachmentHeaders -Body $fileBytes
+            
+            # Link attachment to work item
+            $linkBody = @(
+                @{
+                    op = "add"
+                    path = "/relations/-"
+                    value = @{
+                        rel = "AttachedFile"
+                        url = $uploadedAttachment.url
+                        attributes = @{
+                            comment = "Screenshot: $fileName"
+                        }
                     }
                 }
-            }
-        )
-        
-        $workItemUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/workitems/$workItemId"
-        Invoke-AdoRestApi -Uri $workItemUri -Method PATCH -Headers $headers -Body $linkBody | Out-Null
-    } catch {
-        # Attachments may fail in some configurations
+            )
+            
+            $workItemUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/workitems/$workItemId"
+            Invoke-AdoRestApi -Uri $workItemUri -Method PATCH -Headers $headers -Body $linkBody | Out-Null
+            
+            $attachedCount++
+            Write-Host "    ✓ Attached $fileName to Work Item $workItemId" -ForegroundColor Green
+        } catch {
+            Write-Host "    ⚠ Failed to attach $fileName to Work Item $workItemId : $_" -ForegroundColor Yellow
+        }
     }
 }
 
-Write-Host "  ✓ Added attachments to $(($itemsToAttach.Count)) work items" -ForegroundColor Green
+Write-Host "  ✓ Successfully attached images to $attachedCount work items" -ForegroundColor Green
 
 # ===== ADD CUSTOM FIELDS AND HISTORY =====
 Write-Host "`n[8/8] Adding custom field updates to create history..." -ForegroundColor Cyan
@@ -676,7 +683,7 @@ $workItemInfo = @{
     bugs = $bugIds
     totalCount = $epicIds.Count + $featureIds.Count + $userStoryIds.Count + $taskIds.Count + $bugIds.Count
     commentsAdded = $itemsToComment.Count
-    attachmentsAdded = $itemsToAttach.Count
+    attachmentsAdded = $attachedCount
     historyUpdates = $itemsToUpdate.Count
     createdDate = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
 }
