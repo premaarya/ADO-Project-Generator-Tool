@@ -19,9 +19,10 @@ Each script handles a specific domain:
 ### 2. **API-First Approach**
 Direct REST API calls provide:
 - **Maximum Control**: Fine-grained control over object properties
-- **Flexibility**: Easy to modify and extend
+- **Flexibility**: Easy to modify and extend (supports both YAML and Classic pipelines)
 - **Portability**: Works on any platform with PowerShell
 - **Documentation**: Clear API endpoints for reference
+- **Type Awareness**: Handles different content types (application/json for classic, application/json-patch+json for YAML)
 
 ### 3. **Configuration-Driven**
 Centralized JSON configuration enables:
@@ -134,12 +135,14 @@ Each script depends on outputs from previous scripts:
 ### Work Item Hierarchy
 
 ```
-Epic (5)
-  ├── Feature (3 per Epic = 15 total)
-  │     ├── User Story (3-4 per Feature = 50 total)
-  │     │     ├── Task (2 per Story = 100 total)
-  │     │     └── Bug (30 total, distributed)
-  │     └── Test Case (40 total, linked to stories)
+Epic (3)
+  ├── Feature (2-3 per Epic = 8 total)
+  │     ├── User Story (2-3 per Feature = 20 total)
+  │     │     ├── Task (1-2 per Story = 30 total)
+  │     │     └── Bug (10 total, distributed)
+  │     └── Test Case (15 total, linked to stories as work items)
+
+Total Work Items: 71
 ```
 
 ### Test Management Structure
@@ -195,7 +198,73 @@ $base64AuthInfo = [Convert]::ToBase64String(
 )
 $headers = @{
     "Authorization" = "Basic $base64AuthInfo"
-    "Content-Type" = "application/json-patch+json"
+    "Content-Type" = "application/json-patch+json"  # For YAML pipelines
+}
+
+# For Classic pipelines, use different Content-Type
+$classicHeaders = @{
+    "Authorization" = "Basic $base64AuthInfo"
+    "Content-Type" = "application/json"  # For Classic pipelines
+}
+```
+
+### Pipeline Type Differences
+
+**YAML Pipelines:**
+- Content-Type: `application/json-patch+json`
+- Endpoint: `/_apis/pipelines`
+- Format: JSON Patch operations with YAML file reference
+
+**Classic Pipelines:**
+- Content-Type: `application/json`
+- Build Endpoint: `/_apis/build/definitions`
+- Release Endpoint: `/_apis/release/definitions`
+- Format: Complete definition object with tasks array
+
+### Classic Pipeline Definition Structure
+
+```powershell
+# Classic Build Pipeline
+$buildDefinition = @{
+    name = "Main-App-Classic-CI"
+    type = "build"
+    repository = @{
+        id = $repoId
+        type = "TfsGit"
+        defaultBranch = "refs/heads/main"
+    }
+    process = @{
+        type = 1  # Designer process (not YAML)
+        phases = @(
+            @{
+                name = "Build Phase"
+                steps = @(
+                    @{ task = @{ id = "333b11bd-d341-40d9-afcf-b32d5ce6f23b" }; inputs = @{ ... } },  # NuGet
+                    @{ task = @{ id = "c6c4c611-aa2e-4a33-b606-5eaba2196824" }; inputs = @{ ... } },  # Build
+                    @{ task = @{ id = "0b0f01ed-7dde-43ff-9cbb-e48954daf9b1" }; inputs = @{ ... } }   # Test
+                )
+            }
+        )
+    }
+    triggers = @( @{ branchFilters = @("+refs/heads/main", "+refs/heads/develop"); triggerType = "continuousIntegration" } )
+}
+
+# Classic Release Pipeline
+$releaseDefinition = @{
+    name = "Main-App-Classic-CD"
+    environments = @(
+        @{
+            name = "Dev"
+            rank = 1
+            deployPhases = @( @{ name = "Deploy"; workflowTasks = @(...) } )
+        },
+        @{
+            name = "Production"
+            rank = 4
+            preDeployApprovals = @{ approvals = @( @{ isAutomated = $false } ) }
+        }
+    )
+    artifacts = @( @{ type = "Build"; alias = "_Main-App-Classic-CI" } )
 }
 ```
 
@@ -326,14 +395,14 @@ function Invoke-AdoRestApi {
 | Script | Estimated Time | Primary Factor |
 |--------|---------------|----------------|
 | 01-create-project | 30-60s | Project creation latency |
-| 02-teams-areas | 1-2 min | Team and classification nodes |
-| 03-work-items | 5-10 min | 200+ work items × API latency |
+| 02-teams-areas | 1-2 min | Team and classification nodes + 9 boards |
+| 03-work-items | 2-4 min | 71 work items + 5 image attachments × API latency |
 | 04-test-management | 3-5 min | Test plans, suites, cases |
-| 05-repositories | 2-4 min | Git operations |
-| 06-pipelines | 3-5 min | Pipeline definitions |
+| 05-repositories | 2-4 min | Git operations for 6 repositories |
+| 06-pipelines | 4-6 min | 17 pipeline definitions (9 builds + 8 releases, YAML + Classic) |
 | 07-link-objects | 2-4 min | Relationship creation |
 | 08-wiki-dashboards | 2-3 min | Wiki pages and dashboards |
-| **Total** | **18-33 min** | Network and ADO performance |
+| **Total** | **16-28 min** | Network and ADO performance |
 
 ## Extension Points
 

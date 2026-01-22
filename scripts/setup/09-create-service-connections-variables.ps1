@@ -236,10 +236,12 @@ foreach ($varGroup in $variableGroups) {
         variables = $varGroup.variables
     }
     
-    $variableGroupUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/distributedtask/variablegroups" -ApiVersion "7.0"
+    # Variable groups use a different base URL and require application/json
+    $varGroupHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    $varGroupUri = "https://dev.azure.com/$org/$project/_apis/distributedtask/variablegroups?api-version=7.1-preview.2"
     
     try {
-        $createdVarGroup = Invoke-AdoRestApi -Uri $variableGroupUri -Method POST -Headers $headers -Body $variableGroupBody
+        $createdVarGroup = Invoke-AdoRestApi -Uri $varGroupUri -Method POST -Headers $varGroupHeaders -Body $variableGroupBody
         
         Write-Host "    ✓ Created variable group ID: $($createdVarGroup.id)" -ForegroundColor Green
         

@@ -88,11 +88,12 @@ foreach ($feed in $feeds) {
         capabilities = $feed.capabilities
     }
     
-    # Feeds API uses a different base URL
-    $feedUri = "https://feeds.dev.azure.com/$org/$project/_apis/packaging/feeds?api-version=7.0"
+    # Feeds API uses a different base URL and requires application/json
+    $feedHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    $feedUri = "https://feeds.dev.azure.com/$org/$project/_apis/packaging/feeds?api-version=7.1-preview.1"
     
     try {
-        $createdFeed = Invoke-AdoRestApi -Uri $feedUri -Method POST -Headers $headers -Body $feedBody
+        $createdFeed = Invoke-AdoRestApi -Uri $feedUri -Method POST -Headers $feedHeaders -Body $feedBody
         
         Write-Host "    ✓ Created feed ID: $($createdFeed.id)" -ForegroundColor Green
         

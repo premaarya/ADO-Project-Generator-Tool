@@ -65,11 +65,12 @@ https://dev.azure.com/{YOUR_ORG}/ADO-Migration-Test
 
 | Category | Count | Details |
 |----------|-------|---------|
-| **Work Items** | 200+ | Epics (5), Features (15), Stories (50), Tasks (100), Bugs (30) |
-| **Test Management** | 5 Plans | 40+ test cases, multiple suites, test runs with results |
-| **Repositories** | 3-5 | Multi-branch structure, sample code in C#/Python/JS |
-| **Build Pipelines** | 5+ | Classic & YAML (.NET, Node.js, Docker, Python) |
-| **Release Pipelines** | 5+ | Multi-stage (Dev→QA→Staging→Prod) with approvals |
+| **Work Items** | 71 | Epics (3), Features (8), Stories (20), Tasks (30), Bugs (10) with real image attachments |
+| **Test Management** | 5 Plans | 15 test cases as work items, multiple suites documented |
+| **Repositories** | 6 | Multi-branch structure, sample code in C#/Python/JS, includes project-name repo |
+| **Build Pipelines** | 9 | Classic (2) & YAML (7) - .NET, Node.js, Docker, Python |
+| **Release Pipelines** | 8 | Classic (2) & YAML (6) - Multi-stage with approvals |
+| **Team Boards** | 9 | 3 for Team Alpha, 2 each for Beta/Gamma/Delta |
 | **Teams** | 4 | With distinct area paths and sprint assignments |
 | **Iterations** | 12 | 2-week sprints configured |
 | **Wiki Pages** | 5+ | Documentation, architecture, testing guides |

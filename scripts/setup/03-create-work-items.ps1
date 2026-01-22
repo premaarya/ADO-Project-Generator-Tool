@@ -9,6 +9,9 @@ param(
 # Import helper functions
 . "$PSScriptRoot\..\..\utils\ado-api-helper.ps1"
 
+# Load System.Web assembly for URL encoding
+Add-Type -AssemblyName System.Web
+
 # Load configuration
 Write-Host "Loading configuration..." -ForegroundColor Green
 $config = Get-AdoConfig -ConfigPath $ConfigPath
@@ -595,11 +598,12 @@ for ($i = 0; $i -lt $itemsToAttach.Count; $i++) {
         $filePath = $imageFile.FullName
         
         try {
-            # Read file content
+            # Read file content as bytes
             $fileBytes = [System.IO.File]::ReadAllBytes($filePath)
             
-            # Upload attachment
-            $attachmentUri = "https://dev.azure.com/$org/$project/_apis/wit/attachments?fileName=$fileName&api-version=7.0"
+            # Upload attachment with correct URI encoding
+            $encodedFileName = [System.Web.HttpUtility]::UrlEncode($fileName)
+            $attachmentUri = "https://dev.azure.com/$org/$project/_apis/wit/attachments?fileName=$encodedFileName&api-version=7.1-preview.3"
             $uploadedAttachment = Invoke-RestMethod -Uri $attachmentUri -Method POST -Headers $attachmentHeaders -Body $fileBytes
             
             # Link attachment to work item

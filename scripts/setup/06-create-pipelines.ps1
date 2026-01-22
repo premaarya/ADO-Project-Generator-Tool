@@ -29,11 +29,166 @@ Write-Host "Creating pipelines for project '$project'..." -ForegroundColor Green
 
 $buildPipelineIds = @()
 $releasePipelineIds = @()
+$classicBuildIds = @()
+$classicReleaseIds = @()
 
-# ===== CREATE BUILD PIPELINES (YAML) =====
-Write-Host "`n[1/2] Creating Build Pipelines..." -ForegroundColor Cyan
+# ===== CREATE CLASSIC BUILD PIPELINES =====
+Write-Host "`n[1/4] Creating Classic Build Pipelines..." -ForegroundColor Cyan
 
-foreach ($pipeline in $config.pipelines.build) {
+$classicBuilds = $config.pipelines.build | Where-Object { $_.type -eq "classic" }
+
+foreach ($pipeline in $classicBuilds) {
+    Write-Host "  Creating classic build pipeline: $($pipeline.name)" -ForegroundColor White
+    
+    # Find repository
+    $repository = $repos.repositories | Where-Object { $_.name -eq $pipeline.repository } | Select-Object -First 1
+    
+    if (-not $repository) {
+        Write-Host "    ⚠ Repository not found: $($pipeline.repository)" -ForegroundColor Yellow
+        continue
+    }
+    
+    # Create classic build definition
+    $buildDefinition = @{
+        name = $pipeline.name
+        type = "build"
+        quality = "definition"
+        queue = @{
+            id = 1
+        }
+        repository = @{
+            id = $repository.id
+            type = "TfsGit"
+            name = $repository.name
+            defaultBranch = "refs/heads/main"
+            clean = $true
+        }
+        triggers = @(
+            @{
+                branchFilters = @("+refs/heads/main", "+refs/heads/develop")
+                pathFilters = @()
+                settingsSourceType = 2
+                batchChanges = $false
+                maxConcurrentBuildsPerBranch = 1
+                triggerType = "continuousIntegration"
+            }
+        )
+        variables = @{
+            BuildConfiguration = @{
+                value = "Release"
+                allowOverride = $true
+            }
+            BuildPlatform = @{
+                value = "Any CPU"
+                allowOverride = $true
+            }
+        }
+        buildNumberFormat = "`$(Date:yyyyMMdd)`$(Rev:.r)"
+        comment = $pipeline.description
+        process = @{
+            type = 1
+            phases = @(
+                @{
+                    name = "Agent job 1"
+                    refName = "Job_1"
+                    condition = "succeeded()"
+                    target = @{
+                        type = 1
+                        queue = @{
+                            id = 1
+                        }
+                        allowScriptsAuthAccessOption = $false
+                    }
+                    jobAuthorizationScope = "projectCollection"
+                    steps = @(
+                        @{
+                            displayName = "Restore NuGet packages"
+                            enabled = $true
+                            task = @{
+                                id = "333b11bd-d341-40d9-afcf-b32d5ce6f23b"
+                                versionSpec = "2.*"
+                                definitionType = "task"
+                            }
+                            inputs = @{
+                                command = "restore"
+                                restoreSolution = "**/*.sln"
+                                feedsToUse = "select"
+                            }
+                        },
+                        @{
+                            displayName = "Build solution"
+                            enabled = $true
+                            task = @{
+                                id = "71a9a2d3-a98a-4caa-96ab-affca411ecda"
+                                versionSpec = "1.*"
+                                definitionType = "task"
+                            }
+                            inputs = @{
+                                solution = "**/*.sln"
+                                msbuildArgs = "/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true"
+                                platform = "`$(BuildPlatform)"
+                                configuration = "`$(BuildConfiguration)"
+                            }
+                        },
+                        @{
+                            displayName = "Test Assemblies"
+                            enabled = $true
+                            task = @{
+                                id = "ef087383-ee5e-42c7-9a53-ab56c98420f9"
+                                versionSpec = "2.*"
+                                definitionType = "task"
+                            }
+                            inputs = @{
+                                testSelector = "testAssemblies"
+                                testAssemblyVer2 = "**\*test*.dll`n!**\*TestAdapter.dll`n!**\obj\**"
+                                searchFolder = "`$(System.DefaultWorkingDirectory)"
+                                runSettingsFile = ""
+                                codeCoverageEnabled = $true
+                            }
+                        },
+                        @{
+                            displayName = "Publish Build Artifacts"
+                            enabled = $true
+                            task = @{
+                                id = "2ff763a7-ce83-4e1f-bc89-0ae63477cebe"
+                                versionSpec = "1.*"
+                                definitionType = "task"
+                            }
+                            inputs = @{
+                                PathtoPublish = "`$(Build.ArtifactStagingDirectory)"
+                                ArtifactName = "drop"
+                                publishLocation = "Container"
+                            }
+                        }
+                    )
+                }
+            )
+        }
+    }
+    
+    # Create the build definition with correct Content-Type for classic pipelines
+    $classicHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    $buildUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/build/definitions" -ApiVersion "7.1-preview.7"
+    
+    try {
+        $createdBuild = Invoke-AdoRestApi -Uri $buildUri -Method POST -Headers $classicHeaders -Body $buildDefinition
+        $classicBuildIds += @{
+            id = $createdBuild.id
+            name = $createdBuild.name
+            type = "classic"
+        }
+        Write-Host "    ✓ Created classic build pipeline ID: $($createdBuild.id)" -ForegroundColor Green
+    } catch {
+        Write-Host "    ⚠ Failed to create classic build pipeline: $_" -ForegroundColor Yellow
+    }
+}
+
+# ===== CREATE YAML BUILD PIPELINES =====
+Write-Host "`n[2/4] Creating YAML Build Pipelines..." -ForegroundColor Cyan
+
+$yamlBuilds = $config.pipelines.build | Where-Object { $_.type -eq "yaml" }
+
+foreach ($pipeline in $yamlBuilds) {
     Write-Host "  Creating build pipeline: $($pipeline.name)" -ForegroundColor White
     
     # Find repository
@@ -155,7 +310,7 @@ stages:
         Write-Host "    ⚠ Could not add YAML file: $_" -ForegroundColor Yellow
     }
     
-    # Create pipeline definition
+    # Create pipeline definition with correct headers
     $pipelineBody = @{
         name = $pipeline.name
         folder = "\\"
@@ -169,25 +324,225 @@ stages:
         }
     }
     
-    $pipelinesUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/pipelines"
+    # YAML pipelines need application/json
+    $yamlHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    $pipelinesUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/pipelines" -ApiVersion "7.1-preview.1"
     
     try {
-        $createdPipeline = Invoke-AdoRestApi -Uri $pipelinesUri -Method POST -Headers $headers -Body $pipelineBody
+        $createdPipeline = Invoke-AdoRestApi -Uri $pipelinesUri -Method POST -Headers $yamlHeaders -Body $pipelineBody
         $buildPipelineIds += @{
             id = $createdPipeline.id
             name = $createdPipeline.name
+            type = "yaml"
         }
-        Write-Host "    ✓ Created pipeline ID: $($createdPipeline.id)" -ForegroundColor Green
+        Write-Host "    ✓ Created YAML pipeline ID: $($createdPipeline.id)" -ForegroundColor Green
     } catch {
-        Write-Host "    ⚠ Failed to create pipeline: $($pipeline.name)" -ForegroundColor Yellow
+        Write-Host "    ⚠ Failed to create YAML pipeline: $($pipeline.name)" -ForegroundColor Yellow
     }
 }
 
-# ===== CREATE RELEASE PIPELINES =====
-Write-Host "`n[2/2] Creating Release Pipelines..." -ForegroundColor Cyan
+# ===== CREATE CLASSIC RELEASE PIPELINES =====
+Write-Host "`n[3/4] Creating Classic Release Pipelines..." -ForegroundColor Cyan
 
-foreach ($release in $config.pipelines.release) {
-    Write-Host "  Creating release pipeline: $($release.name)" -ForegroundColor White
+$classicReleases = $config.pipelines.release | Where-Object { $_.type -eq "classic" }
+
+foreach ($release in $classicReleases) {
+    Write-Host "  Creating classic release pipeline: $($release.name)" -ForegroundColor White
+    
+    # Build environments/stages for classic releases
+    $environments = @()
+    $rank = 1
+    
+    foreach ($stage in $release.stages) {
+        $stageName = $stage
+        $environment = @{
+            id = -$rank
+            name = $stageName
+            rank = $rank
+            owner = @{
+                displayName = "Build Service"
+                id = "00000000-0000-0000-0000-000000000000"
+            }
+            variables = @{}
+            preDeployApprovals = @{
+                approvals = @()
+                approvalOptions = @{
+                    requiredApproverCount = $null
+                    releaseCreatorCanBeApprover = $false
+                    autoTriggeredAndPreviousEnvironmentApprovedCanBeSkipped = $false
+                    enforceIdentityRevalidation = $false
+                    timeoutInMinutes = 0
+                    executionOrder = "beforeGates"
+                }
+            }
+            postDeployApprovals = @{
+                approvals = @()
+                approvalOptions = @{
+                    requiredApproverCount = $null
+                    releaseCreatorCanBeApprover = $false
+                    autoTriggeredAndPreviousEnvironmentApprovedCanBeSkipped = $false
+                    enforceIdentityRevalidation = $false
+                    timeoutInMinutes = 0
+                    executionOrder = "afterSuccessfulGates"
+                }
+            }
+            deployPhases = @(
+                @{
+                    deploymentInput = @{
+                        queueId = 1
+                        demands = @()
+                        enableAccessToken = $false
+                        timeoutInMinutes = 0
+                        jobCancelTimeoutInMinutes = 1
+                        condition = "succeeded()"
+                        overrideInputs = @{}
+                    }
+                    rank = 1
+                    phaseType = "agentBasedDeployment"
+                    name = "Agent job"
+                    workflowTasks = @(
+                        @{
+                            taskId = "e213ff0f-5d5c-4791-802d-52ea3e7be1f1"
+                            version = "2.*"
+                            name = "Deploy to $stageName"
+                            enabled = $true
+                            alwaysRun = $false
+                            continueOnError = $false
+                            timeoutInMinutes = 0
+                            definitionType = "task"
+                            overrideInputs = @{}
+                            condition = "succeeded()"
+                            inputs = @{
+                                ConnectedServiceName = ""
+                                WebAppName = ""
+                                DeployToSlotOrASEFlag = "false"
+                                ResourceGroupName = ""
+                                SlotName = "production"
+                                Package = "`$(System.DefaultWorkingDirectory)/**/*.zip"
+                                RuntimeStack = "DOTNETCORE|Latest"
+                                StartupCommand = ""
+                            }
+                        }
+                    )
+                }
+            )
+            conditions = @(
+                @{
+                    conditionType = "artifact"
+                    name = "ReleaseStarted"
+                    value = ""
+                }
+            )
+            executionPolicy = @{
+                concurrencyCount = 1
+                queueDepthCount = 0
+            }
+            schedules = @()
+            retentionPolicy = @{
+                daysToKeep = 30
+                releasesToKeep = 3
+                retainBuild = $true
+            }
+        }
+        
+        # Add manual approval for Production/Staging
+        if ($stageName -match "Production|Staging") {
+            $environment.preDeployApprovals.approvals = @(
+                @{
+                    rank = 1
+                    isAutomated = $false
+                    isNotificationOn = $true
+                    approver = @{
+                        displayName = "Manual Approver"
+                        id = "00000000-0000-0000-0000-000000000000"
+                    }
+                }
+            )
+        }
+        
+        $environments += $environment
+        $rank++
+    }
+    
+    # Find artifact source (use first build pipeline created)
+    $artifactSource = $null
+    if ($classicBuildIds.Count -gt 0) {
+        $artifactSource = $classicBuildIds[0]
+    } elseif ($buildPipelineIds.Count -gt 0) {
+        $artifactSource = $buildPipelineIds[0]
+    }
+    
+    if (-not $artifactSource) {
+        Write-Host "    ⚠ No build pipeline found for artifact source" -ForegroundColor Yellow
+        continue
+    }
+    
+    # Create classic release definition
+    $releaseDefinition = @{
+        name = $release.name
+        comment = $release.description
+        source = 2
+        revision = 1
+        environments = $environments
+        artifacts = @(
+            @{
+                sourceId = "$($project):$($artifactSource.id)"
+                type = "Build"
+                alias = "_$($artifactSource.name)"
+                definitionReference = @{
+                    definition = @{
+                        id = "$($artifactSource.id)"
+                        name = $artifactSource.name
+                    }
+                    project = @{
+                        id = $projectId
+                        name = $project
+                    }
+                }
+                isPrimary = $true
+            }
+        )
+        triggers = @(
+            @{
+                triggerType = "artifactSource"
+                artifactAlias = "_$($artifactSource.name)"
+                triggerConditions = @()
+            }
+        )
+        variables = @{
+            Environment = @{
+                value = "Production"
+            }
+        }
+        variableGroups = @()
+    }
+    
+    $releaseUri = New-AdoUri -Organization $org -Project $project -Resource "release/definitions" -ApiVersion "7.1-preview.4"
+    $releaseUri = $releaseUri -replace "dev\.azure\.com", "vsrm.dev.azure.com"
+    
+    # Use application/json for classic release definitions
+    $releaseHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    
+    try {
+        $createdRelease = Invoke-AdoRestApi -Uri $releaseUri -Method POST -Headers $releaseHeaders -Body $releaseDefinition
+        $classicReleaseIds += @{
+            id = $createdRelease.id
+            name = $createdRelease.name
+            type = "classic"
+        }
+        Write-Host "    ✓ Created classic release pipeline ID: $($createdRelease.id)" -ForegroundColor Green
+    } catch {
+        Write-Host "    ⚠ Failed to create classic release pipeline: $($release.name) - $_" -ForegroundColor Yellow
+    }
+}
+
+# ===== CREATE YAML RELEASE PIPELINES =====
+Write-Host "`n[4/4] Creating YAML Release Pipelines..." -ForegroundColor Cyan
+
+$yamlReleases = $config.pipelines.release | Where-Object { $_.type -eq "yaml" }
+
+foreach ($release in $yamlReleases) {
+    Write-Host "  Creating YAML release pipeline: $($release.name)" -ForegroundColor White
     
     # Build environments/stages
     $environments = @()
@@ -389,18 +744,21 @@ $outputPath = "$PSScriptRoot\..\output"
 $pipelineInfo = @{
     buildPipelines = $buildPipelineIds
     releasePipelines = $releasePipelineIds
-    totalBuildPipelines = $buildPipelineIds.Count
-    totalReleasePipelines = $releasePipelineIds.Count
-    yamlPipelines = ($buildPipelineIds | Where-Object { $_.type -ne "Classic Build" }).Count
-    classicBuilds = ($buildPipelineIds | Where-Object { $_.type -eq "Classic Build" }).Count
+    classicBuildPipelines = $classicBuildIds
+    classicReleasePipelines = $classicReleaseIds
+    totalBuildPipelines = $buildPipelineIds.Count + $classicBuildIds.Count
+    totalReleasePipelines = $releasePipelineIds.Count + $classicReleaseIds.Count
+    yamlBuildPipelines = $buildPipelineIds.Count
+    classicBuilds = $classicBuildIds.Count
+    classicReleases = $classicReleaseIds.Count
     createdDate = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
 }
 
 $pipelineInfo | ConvertTo-Json -Depth 10 | Set-Content "$outputPath\pipelines-info.json"
 
 Write-Host "`n✓ Pipeline creation completed!" -ForegroundColor Green
-Write-Host "  Build Pipelines: $($buildPipelineIds.Count) (YAML: $(($buildPipelineIds | Where-Object { $_.type -ne 'Classic Build' }).Count), Classic: $(($buildPipelineIds | Where-Object { $_.type -eq 'Classic Build' }).Count))" -ForegroundColor Cyan
-Write-Host "  Release Pipelines: $($releasePipelineIds.Count)" -ForegroundColor Cyan
+Write-Host "  Build Pipelines: $($buildPipelineIds.Count + $classicBuildIds.Count) (YAML: $($buildPipelineIds.Count), Classic: $($classicBuildIds.Count))" -ForegroundColor Cyan
+Write-Host "  Release Pipelines: $($releasePipelineIds.Count + $classicReleaseIds.Count) (YAML: $($releasePipelineIds.Count), Classic: $($classicReleaseIds.Count))" -ForegroundColor Cyan
 Write-Host "`nPipeline information saved to: $outputPath\pipelines-info.json" -ForegroundColor Cyan
 
 Write-Host "`n" -NoNewline

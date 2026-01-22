@@ -1,5 +1,64 @@
 # Changelog - ADO Sample Project Generator
 
+## [v1.4] - Classic Pipelines, Team Boards, and Real Attachments (Latest)
+
+### Added Features
+
+#### 1. Classic CI/CD Pipelines (Script 06)
+- **Classic Build Pipelines**: Added 2 classic build pipelines for main-app repository
+  - Main-App-Classic-CI: Traditional .NET build with NuGet, MSBuild, Test, Publish
+  - Main-App-Modern-CI: Modern .NET build with enhanced features
+  - Build number format: $(Date:yyyyMMdd)$(Rev:.r)
+  - Continuous integration triggers on main and develop branches
+  
+- **Classic Release Pipelines**: Added 2 classic release pipelines
+  - Main-App-Classic-CD: 4-stage deployment (Dev→QA→Staging→Production)
+  - Main-App-Modern-CD: 3-stage deployment (Dev→QA→Production)
+  - Manual approval gates for Staging and Production
+  - Azure Web App deployment tasks with rollback capabilities
+  
+- **Content-Type Support**: Fixed header handling for different pipeline types
+  - Classic pipelines: `application/json`
+  - YAML pipelines: `application/json-patch+json`
+
+#### 2. Team Board Configuration (Script 02)
+- **9 Total Boards**: Created across 4 teams
+  - Team Alpha: 3 boards (Stories, Tasks, Features)
+  - Other teams: 2 boards each (Stories, Tasks)
+  - Board columns and card settings configured
+  - Default iteration paths assigned
+
+#### 3. Real Image Attachments (Script 03)
+- **JPEG Files**: 5 real JPEG images from sample-data/resources folder
+  - Attached to random user stories
+  - Base64 encoded with metadata
+  - Attachment count tracking
+
+#### 4. Project-Name Repository
+- **PWC-Development-Test**: Repository matching project name
+  - Total repositories increased to 6
+  - Ensures migration testing consistency
+
+### Configuration Updates
+- Updated config.json with 4 classic pipeline definitions
+- Added board configurations for all teams
+- Project-name repository as first entry
+
+### Documentation Updates
+- All markdown files updated to reflect current state:
+  - Corrected work item counts (71 actual)
+  - Added classic pipeline documentation (4 pipelines)
+  - Updated repository count (6 total)
+  - Added team boards details (9 boards)
+  - Updated pipeline totals (9 builds + 8 releases = 17 total)
+
+### Bug Fixes
+- Fixed duplicate "process" key in classic build definition
+- Fixed 415 Unsupported Media Type error with correct Content-Type
+- Corrected inconsistent entity counts in documentation
+
+---
+
 ## [v1.3] - Complete ADO Entity Coverage
 
 ### Added Features

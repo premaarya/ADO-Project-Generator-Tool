@@ -26,14 +26,15 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 Write-Host "Step 1: Creating Project Wiki..." -ForegroundColor Green
 
 try {
-    # Create project wiki
+    # Create project wiki with correct headers
     $wikiBody = @{
         name = "$project Wiki"
         type = "projectWiki"
     } | ConvertTo-Json -Depth 10
 
-    $wikiUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wiki/wikis" -ApiVersion "7.0"
-    $wiki = Invoke-AdoRestApi -Uri $wikiUri -Method POST -Headers $headers -Body $wikiBody
+    $wikiHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+    $wikiUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wiki/wikis" -ApiVersion "7.1-preview.2"
+    $wiki = Invoke-AdoRestApi -Uri $wikiUri -Method POST -Headers $wikiHeaders -Body $wikiBody
     
     Write-Host "  ✓ Created project wiki: $($wiki.name)" -ForegroundColor Green
     
@@ -239,8 +240,9 @@ try {
             wiql = $queryDef.wiql
         } | ConvertTo-Json -Depth 10
         
-        $createQueryUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/queries/Shared Queries" -ApiVersion "7.0"
-        $query = Invoke-AdoRestApi -Uri $createQueryUri -Method POST -Headers $headers -Body $queryBody
+        $queryHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+        $createQueryUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/queries/Shared Queries" -ApiVersion "7.1-preview.2"
+        $query = Invoke-AdoRestApi -Uri $createQueryUri -Method POST -Headers $queryHeaders -Body $queryBody
         
         Write-Host "  ✓ Created query: $($queryDef.name)" -ForegroundColor Green
         Start-Sleep -Milliseconds 300
@@ -299,8 +301,9 @@ try {
             )
         } | ConvertTo-Json -Depth 10
         
-        $dashboardUri = New-AdoUri -Organization $org -Project $project -Resource "$($team.name)/_apis/dashboard/dashboards" -ApiVersion "7.0-preview.3"
-        $dashboard = Invoke-AdoRestApi -Uri $dashboardUri -Method POST -Headers $headers -Body $dashboardBody
+        $dashboardHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+        $dashboardUri = "https://dev.azure.com/$org/$project/_apis/dashboard/dashboards?api-version=7.1-preview.3"
+        $dashboard = Invoke-AdoRestApi -Uri $dashboardUri -Method POST -Headers $dashboardHeaders -Body $dashboardBody
         
         Write-Host "  ✓ Created dashboard for: $($team.name)" -ForegroundColor Green
         Start-Sleep -Milliseconds 500
@@ -325,8 +328,9 @@ try {
             isFolder = $true
         } | ConvertTo-Json -Depth 10
         
-        $folderUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/queries/Shared Queries" -ApiVersion "7.0"
-        $folder = Invoke-AdoRestApi -Uri $folderUri -Method POST -Headers $headers -Body $folderBody
+        $folderHeaders = Get-AdoHeaders -Pat $config.pat -ContentType "application/json"
+        $folderUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/wit/queries/Shared Queries" -ApiVersion "7.1-preview.2"
+        $folder = Invoke-AdoRestApi -Uri $folderUri -Method POST -Headers $folderHeaders -Body $folderBody
         
         Write-Host "  ✓ Created query folder: $folderName" -ForegroundColor Green
         Start-Sleep -Milliseconds 300

@@ -165,8 +165,8 @@ foreach ($team in $config.teams) {
             Write-Host "    Configuring board: $($board.name)" -ForegroundColor White
             
             try {
-                # Get board settings
-                $boardUri = New-AdoUri -Organization $org -Project $project -Resource "$teamId/_apis/work/boards/$($board.name)"
+                # Get board settings using correct API version
+                $boardUri = "https://dev.azure.com/$org/$project/$teamId/_apis/work/boards/$($board.name)?api-version=7.1-preview.1"
                 
                 # Configure board columns based on type
                 $columns = switch ($board.type) {

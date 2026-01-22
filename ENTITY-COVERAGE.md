@@ -29,9 +29,9 @@ This document provides a complete mapping of all Azure DevOps entities covered b
 | 18 | **Sprint** | 02 | 12+ sprints | ✅ Yes | 2024-2025 sprint iterations |
 | 19 | **Dashboard** | 08 | Multiple | ✅ Yes | Project and team dashboards with widgets |
 | 20 | **Azure Pipeline (YAML)** | 06 | 7 pipelines | ✅ Yes | CI pipelines for .NET, Node.js, Python, Docker |
-| 21 | **Azure Pipeline (Classic)** | 06 | 2 pipelines | ✅ Yes | Classic build definitions for .NET and NPM |
+| 21 | **Azure Pipeline (Classic)** | 06 | 4 pipelines | ✅ Yes | Classic build (2) and release (2) pipelines |
 | 22 | **Build Definition** | 06 | 9 total | ✅ Yes | Combined YAML (7) + Classic (2) builds |
-| 23 | **Release Pipeline** | 06 | 6 pipelines | ✅ Yes | Multi-stage CD pipelines with approvals |
+| 23 | **Release Pipeline** | 06 | 8 pipelines | ✅ Yes | Classic (2) + YAML (6) multi-stage CD with approvals |
 | 24 | **Service Connection** | 09 | 6 connections | ✅ Yes | Azure, GitHub, Docker, SonarCloud, NPM |
 | 25 | **Variable Group** | 09 | 6 groups | ✅ Yes | 40+ variables for all environments |
 | 26 | **Test Plan** | 04 | 5 plans | ✅ Yes | Integration, Regression, UAT, Performance, Security |
@@ -84,9 +84,9 @@ This document provides a complete mapping of all Azure DevOps entities covered b
 - Work Item Custom Fields ✅
 
 **Details:**
-- **200+ total work items** created hierarchically
-- Comments added to ~60 work items (1-3 comments each)
-- Attachments (requirements docs) on ~10 user stories
+- **71 total work items** created hierarchically
+- Comments added to ~20 work items (1-3 comments each)
+- Attachments: 5 real JPEG images from sample-data/resources folder attached to random user stories
 - History/revisions on ~15 work items
 - Custom fields: Priority, Severity, Story Points, Effort, Business Value, Risk
 - Tags, states, iterations, area paths
@@ -95,12 +95,12 @@ This document provides a complete mapping of all Azure DevOps entities covered b
 
 **Statistics:**
 ```
-Epics: 5
-Features: 15
-User Stories: 50
-Tasks: 100
-Bugs: 30
-Total: 200
+Epics: 3
+Features: 8
+User Stories: 20
+Tasks: 30
+Bugs: 10
+Total: 71
 ```
 
 ---
@@ -185,16 +185,25 @@ Total: 200
 7. **Code-Quality-CI**: Static analysis & complexity metrics
 
 **Classic Build Definitions (2):**
-1. **Classic-DotNet-Build**: MSBuild-based .NET build
-2. **Classic-NPM-Build**: NPM-based Node.js build
+1. **Main-App-Classic-CI**: MSBuild-based .NET build with NuGet/test/publish tasks
+2. **Main-App-Modern-CI**: Modern .NET build with enhanced features
 
-**Release Pipelines (6):**
+**Classic Release Definitions (2):**
+1. **Main-App-Classic-CD**: 4-stage (Dev→QA→Staging→Prod) with manual approvals
+2. **Main-App-Modern-CD**: 3-stage (Dev→QA→Prod) streamlined deployment
+
+**YAML Release Pipelines (6):**
 1. **Main-App-CD**: 4-stage (Dev→QA→Staging→Prod), Azure App Service
 2. **API-Service-CD**: 3-stage with canary deployment, Azure Functions
 3. **Auth-Service-CD**: 3-stage Kubernetes deployment to AKS
 4. **Infrastructure-Deploy-CD**: 3-stage Terraform IaC deployment
 5. **Database-Migration-CD**: 3-stage SQL migrations with DBA approval
 6. **Container-Deploy-CD**: 3-stage Helm deployment with canary
+
+**Total Pipeline Count:**
+- Build Pipelines: 9 (7 YAML + 2 Classic)
+- Release Pipelines: 8 (6 YAML + 2 Classic)
+- Combined Total: 17 pipelines
 
 **Pipeline Features:**
 - CI triggers on main/develop branches

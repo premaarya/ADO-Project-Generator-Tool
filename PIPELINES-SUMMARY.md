@@ -5,9 +5,37 @@ This document summarizes all Continuous Integration (CI) and Continuous Deployme
 
 ---
 
-## Continuous Integration (CI) Pipelines (7 Total)
+## Continuous Integration (CI) Pipelines (9 Total)
 
-### 1. Main-App-CI
+### Classic Build Pipelines (2)
+
+#### 1. Main-App-Classic-CI
+- **Type**: Classic Build Pipeline
+- **Repository**: main-app
+- **Purpose**: Build .NET application using Classic designer
+- **Features**:
+  - NuGet package restore
+  - MSBuild compilation
+  - Unit test execution with code coverage
+  - Publish build artifacts
+  - Build number format: $(Date:yyyyMMdd)$(Rev:.r)
+- **Triggers**: Continuous integration on main and develop branches
+- **Variables**: BuildConfiguration (Release), BuildPlatform (Any CPU)
+
+#### 2. Main-App-Modern-CI
+- **Type**: Classic Build Pipeline
+- **Repository**: main-app
+- **Purpose**: Modern .NET build with enhanced features
+- **Features**:
+  - NuGet restore with feed management
+  - Build with deployment packaging
+  - Test assemblies with coverage
+  - Artifact staging and publishing
+- **Triggers**: Continuous integration on main and develop branches
+
+### YAML Build Pipelines (7)
+
+#### 3. Main-App-CI
 - **Repository**: main-app
 - **File**: azure-pipelines.yml
 - **Purpose**: Build and test the main .NET application
@@ -152,14 +180,18 @@ This document summarizes all Continuous Integration (CI) and Continuous Deployme
 ## Pipeline Statistics
 
 ### CI Pipelines
-- **Total Count**: 7
+- **Total Count**: 9 (7 YAML + 2 Classic)
+- **YAML Pipelines**: 7
+- **Classic Pipelines**: 2
 - **Languages/Technologies**: .NET, Node.js, Python, Docker, Terraform, Bicep
 - **Code Quality Tools**: ESLint, Pylint, Black, Flake8, Prettier, SonarCloud
 - **Security Tools**: TruffleHog, SonarCloud, Container Scanning, npm audit
 
 ### CD Pipelines
-- **Total Count**: 6
-- **Total Deployment Stages**: 20
+- **Total Count**: 8 (6 YAML + 2 Classic)
+- **YAML Pipelines**: 6
+- **Classic Release Pipelines**: 2
+- **Total Deployment Stages**: 27 (YAML: 20, Classic: 7)
 - **Deployment Targets**: 
   - Azure App Service: 1 pipeline
   - Azure Functions: 1 pipeline
@@ -262,9 +294,10 @@ This document summarizes all Continuous Integration (CI) and Continuous Deployme
 
 ## Migration Testing Checklist
 
-- [ ] All 7 CI pipelines created
-- [ ] All 6 CD pipelines created
+- [ ] All 9 CI pipelines created (7 YAML + 2 Classic)
+- [ ] All 8 CD pipelines created (6 YAML + 2 Classic)
 - [ ] YAML files committed to repositories
+- [ ] Classic pipeline definitions configured in config.json
 - [ ] Service connections configured
 - [ ] Environments with approval gates set up
 - [ ] Pipeline variables and secrets configured
