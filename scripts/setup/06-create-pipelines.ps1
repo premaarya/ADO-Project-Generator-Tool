@@ -186,35 +186,122 @@ foreach ($pipeline in $classicBuilds) {
 # ===== CREATE YAML BUILD PIPELINES =====
 Write-Host "`n[2/4] Creating YAML Build Pipelines..." -ForegroundColor Cyan
 
-$yamlBuilds = $config.pipelines.build | Where-Object { $_.type -eq "yaml" }
-
-foreach ($pipeline in $yamlBuilds) {
-    Write-Host "  Creating build pipeline: $($pipeline.name)" -ForegroundColor White
-    
-    # Find repository
-    $repository = $repos.repositories | Where-Object { $_.name -eq $pipeline.repository } | Select-Object -First 1
-    
-    if (-not $repository) {
-        Write-Host "    ⚠ Repository not found: $($pipeline.repository)" -ForegroundColor Yellow
-        continue
+# Define 12 YAML CI pipelines with reusable templates
+$yamlPipelineDefinitions = @(
+    @{
+        name = "Main-Web-App-CI"
+        repository = "main-app"
+        path = "pipelines/main-web-app-ci.yaml"
+        description = "CI pipeline for main web application (.NET)"
+        type = "dotnet"
+    },
+    @{
+        name = "API-Gateway-CI"
+        repository = "main-app"
+        path = "pipelines/api-gateway-ci.yaml"
+        description = "CI pipeline for API Gateway (.NET)"
+        type = "dotnet"
+    },
+    @{
+        name = "Auth-Service-CI"
+        repository = "main-app"
+        path = "pipelines/auth-service-ci.yaml"
+        description = "CI pipeline for Authentication Service (Node.js)"
+        type = "node"
+    },
+    @{
+        name = "User-Service-CI"
+        repository = "main-app"
+        path = "pipelines/user-service-ci.yaml"
+        description = "CI pipeline for User Management Service (Node.js)"
+        type = "node"
+    },
+    @{
+        name = "Notification-Service-CI"
+        repository = "main-app"
+        path = "pipelines/notification-service-ci.yaml"
+        description = "CI pipeline for Notification Service (Python)"
+        type = "python"
+    },
+    @{
+        name = "Analytics-Service-CI"
+        repository = "main-app"
+        path = "pipelines/analytics-service-ci.yaml"
+        description = "CI pipeline for Analytics Service (Python)"
+        type = "python"
+    },
+    @{
+        name = "Frontend-App-CI"
+        repository = "main-app"
+        path = "pipelines/frontend-app-ci.yaml"
+        description = "CI pipeline for Frontend Application (Node.js/React)"
+        type = "node"
+    },
+    @{
+        name = "Mobile-Backend-CI"
+        repository = "main-app"
+        path = "pipelines/mobile-backend-ci.yaml"
+        description = "CI pipeline for Mobile Backend (.NET)"
+        type = "dotnet"
+    },
+    @{
+        name = "Data-Processing-CI"
+        repository = "main-app"
+        path = "pipelines/data-processing-ci.yaml"
+        description = "CI pipeline for Data Processing Service (Python)"
+        type = "python"
+    },
+    @{
+        name = "Payment-Service-CI"
+        repository = "main-app"
+        path = "pipelines/payment-service-ci.yaml"
+        description = "CI pipeline for Payment Service (.NET)"
+        type = "dotnet"
+    },
+    @{
+        name = "API-Docs-CI"
+        repository = "documentation"
+        path = "pipelines/api-docs-ci.yaml"
+        description = "CI pipeline for API Documentation Generator (Node.js)"
+        type = "node-docs"
+    },
+    @{
+        name = "Container-WebApp-CI"
+        repository = "main-app"
+        path = "pipelines/container-webapp-ci.yaml"
+        description = "CI pipeline for Web App Container"
+        type = "docker"
     }
+)
+
+# Function to generate YAML content based on pipeline type
+function Get-PipelineYamlContent {
+    param(
+        [string]$PipelineName,
+        [string]$Type
+    )
     
-    # Create YAML pipeline definition file in repo first
-    $yamlContent = @"
-# Azure DevOps Pipeline for $($pipeline.name)
+    switch ($Type) {
+        "dotnet" {
+            return @"
+# Azure DevOps CI Pipeline for $PipelineName
+name: $PipelineName
+
 trigger:
   branches:
     include:
     - main
     - develop
+    - feature/*
   paths:
     include:
     - src/*
-    - tests/*
+
+pool:
+  vmImage: 'ubuntu-latest'
 
 variables:
   buildConfiguration: 'Release'
-  dotnetVersion: '8.x'
 
 stages:
 - stage: Build
@@ -222,49 +309,500 @@ stages:
   jobs:
   - job: Build
     displayName: 'Build Job'
-    pool:
-      vmImage: 'ubuntu-latest'
-    
     steps:
-    - task: UseDotNet@2
-      displayName: 'Install .NET SDK'
-      inputs:
-        version: `$(dotnetVersion)
-    
-    - task: DotNetCoreCLI@2
-      displayName: 'Restore dependencies'
-      inputs:
-        command: 'restore'
-        projects: '**/*.csproj'
-    
-    - task: DotNetCoreCLI@2
-      displayName: 'Build solution'
-      inputs:
-        command: 'build'
-        projects: '**/*.csproj'
-        arguments: '--configuration `$(buildConfiguration)'
-    
-    - task: DotNetCoreCLI@2
-      displayName: 'Run tests'
-      inputs:
-        command: 'test'
-        projects: '**/*Tests.csproj'
-        arguments: '--configuration `$(buildConfiguration) --collect "Code Coverage"'
-    
-    - task: PublishTestResults@2
-      displayName: 'Publish test results'
-      inputs:
-        testResultsFormat: 'VSTest'
-        testResultsFiles: '**/*.trx'
-    
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish artifacts'
-      inputs:
-        PathtoPublish: '`$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'drop'
+    - template: templates/dotnet-build-template.yaml
+      parameters:
+        buildConfiguration: `$(buildConfiguration)
+        dotnetVersion: '8.x'
+        projectPath: '**/*.csproj'
+        testProjectPath: '**/*Tests.csproj'
+        runTests: true
+        publishArtifacts: true
 "@
+        }
+        "node" {
+            return @"
+# Azure DevOps CI Pipeline for $PipelineName
+name: $PipelineName
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - hotfix/*
+  paths:
+    include:
+    - services/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: `$(nodeVersion)
+        workingDirectory: '.'
+        runLint: true
+        runTests: true
+        buildCommand: 'npm run build'
+        publishArtifacts: true
+"@
+        }
+        "python" {
+            return @"
+# Azure DevOps CI Pipeline for $PipelineName
+name: $PipelineName
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - services/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/python-build-template.yaml
+      parameters:
+        pythonVersion: `$(pythonVersion)
+        workingDirectory: '.'
+        requirementsFile: 'requirements.txt'
+        runQualityChecks: true
+        runTests: true
+        publishArtifacts: true
+"@
+        }
+        "docker" {
+            return @"
+# Azure DevOps CI Pipeline for $PipelineName
+name: $PipelineName
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - docker/*
+    - src/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  imageName: 'webapp'
+  containerRegistry: 'MyContainerRegistry'
+
+stages:
+- stage: Build
+  displayName: 'Build Container'
+  jobs:
+  - job: BuildDocker
+    displayName: 'Build Docker Image'
+    steps:
+    - template: templates/docker-build-template.yaml
+      parameters:
+        dockerfilePath: 'Dockerfile'
+        imageName: `$(imageName)
+        containerRegistry: `$(containerRegistry)
+        runSecurityScan: true
+        buildContext: '.'
+        additionalTags:
+        - 'v1.0.`$(Build.BuildId)'
+"@
+        }
+        "node-docs" {
+            return @"
+# Azure DevOps CI Pipeline for $PipelineName
+name: $PipelineName
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - docs/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build Documentation'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: `$(nodeVersion)
+        workingDirectory: '.'
+        runLint: false
+        runTests: false
+        buildCommand: 'npm run build:docs'
+        publishArtifacts: true
+"@
+        }
+        default {
+            return @"
+# Azure DevOps Pipeline for $PipelineName
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    steps:
+    - script: echo 'Building $PipelineName'
+      displayName: 'Build'
+"@
+        }
+    }
+}
+
+foreach ($pipelineDef in $yamlPipelineDefinitions) {
+    Write-Host "  Creating YAML CI pipeline: $($pipelineDef.name)" -ForegroundColor White
+    
+    # Find repository
+    $repository = $repos.repositories | Where-Object { $_.name -eq $pipelineDef.repository } | Select-Object -First 1
+    
+    if (-not $repository) {
+        Write-Host "    ⚠ Repository not found: $($pipelineDef.repository)" -ForegroundColor Yellow
+        continue
+    }
+    
+    # Generate YAML content based on pipeline type
+    $yamlContent = Get-PipelineYamlContent -PipelineName $pipelineDef.name -Type $pipelineDef.type
     
     $yamlBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($yamlContent))
+    
+    # Also create template files if they don't exist in the repository
+    $templateFiles = @{
+        "templates/dotnet-build-template.yaml" = @"
+# Reusable template for .NET builds
+parameters:
+- name: buildConfiguration
+  type: string
+  default: 'Release'
+- name: dotnetVersion
+  type: string
+  default: '8.x'
+- name: projectPath
+  type: string
+  default: '**/*.csproj'
+- name: testProjectPath
+  type: string
+  default: '**/*Tests.csproj'
+- name: runTests
+  type: boolean
+  default: true
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK `${{ parameters.dotnetVersion }}'
+  inputs:
+    packageType: 'sdk'
+    version: '`${{ parameters.dotnetVersion }}'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore NuGet Packages'
+  inputs:
+    command: 'restore'
+    projects: '`${{ parameters.projectPath }}'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build Solution'
+  inputs:
+    command: 'build'
+    projects: '`${{ parameters.projectPath }}'
+    arguments: '--configuration `${{ parameters.buildConfiguration }} --no-restore'
+
+- `${{ if eq(parameters.runTests, true) }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'Run Unit Tests'
+    inputs:
+      command: 'test'
+      projects: '`${{ parameters.testProjectPath }}'
+      arguments: '--configuration `${{ parameters.buildConfiguration }} --no-build --collect:"XPlat Code Coverage" --logger trx'
+      publishTestResults: true
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '`$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+- `${{ if eq(parameters.publishArtifacts, true) }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'Publish Application'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      projects: '`${{ parameters.projectPath }}'
+      arguments: '--configuration `${{ parameters.buildConfiguration }} --output `$(Build.ArtifactStagingDirectory) --no-build'
+      zipAfterPublish: true
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '`$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+"@
+        "templates/node-build-template.yaml" = @"
+# Reusable template for Node.js builds
+parameters:
+- name: nodeVersion
+  type: string
+  default: '20.x'
+- name: workingDirectory
+  type: string
+  default: '.'
+- name: runLint
+  type: boolean
+  default: true
+- name: runTests
+  type: boolean
+  default: true
+- name: buildCommand
+  type: string
+  default: 'npm run build'
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js `${{ parameters.nodeVersion }}'
+  inputs:
+    versionSpec: '`${{ parameters.nodeVersion }}'
+
+- script: npm ci
+  displayName: 'Install Dependencies'
+  workingDirectory: '`${{ parameters.workingDirectory }}'
+
+- `${{ if eq(parameters.runLint, true) }}:
+  - script: npm run lint
+    displayName: 'Run Linting'
+    workingDirectory: '`${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+- `${{ if eq(parameters.runTests, true) }}:
+  - script: npm run test
+    displayName: 'Run Tests'
+    workingDirectory: '`${{ parameters.workingDirectory }}'
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Test Results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-results.xml'
+      searchFolder: '`${{ parameters.workingDirectory }}'
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '`${{ parameters.workingDirectory }}/coverage/cobertura-coverage.xml'
+
+- script: `${{ parameters.buildCommand }}
+  displayName: 'Build Application'
+  workingDirectory: '`${{ parameters.workingDirectory }}'
+
+- `${{ if eq(parameters.publishArtifacts, true) }}:
+  - task: ArchiveFiles@2
+    displayName: 'Archive Build Output'
+    inputs:
+      rootFolderOrFile: '`${{ parameters.workingDirectory }}/dist'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '`$(Build.ArtifactStagingDirectory)/app-`$(Build.BuildId).zip'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '`$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+"@
+        "templates/python-build-template.yaml" = @"
+# Reusable template for Python builds
+parameters:
+- name: pythonVersion
+  type: string
+  default: '3.11'
+- name: workingDirectory
+  type: string
+  default: '.'
+- name: requirementsFile
+  type: string
+  default: 'requirements.txt'
+- name: runQualityChecks
+  type: boolean
+  default: true
+- name: runTests
+  type: boolean
+  default: true
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: UsePythonVersion@0
+  displayName: 'Use Python `${{ parameters.pythonVersion }}'
+  inputs:
+    versionSpec: '`${{ parameters.pythonVersion }}'
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r `${{ parameters.requirementsFile }}
+  displayName: 'Install Dependencies'
+  workingDirectory: '`${{ parameters.workingDirectory }}'
+
+- `${{ if eq(parameters.runQualityChecks, true) }}:
+  - script: |
+      pip install pylint flake8 black mypy
+      black --check . || true
+      flake8 . --max-line-length=120 --exclude=venv,env,.git --exit-zero
+      pylint **/*.py --exit-zero
+    displayName: 'Run Code Quality Checks'
+    workingDirectory: '`${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+- `${{ if eq(parameters.runTests, true) }}:
+  - script: |
+      pip install pytest pytest-cov pytest-asyncio
+      pytest tests/ --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml
+    displayName: 'Run Tests with Coverage'
+    workingDirectory: '`${{ parameters.workingDirectory }}'
+    continueOnError: false
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Test Results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-results.xml'
+      searchFolder: '`${{ parameters.workingDirectory }}'
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '`${{ parameters.workingDirectory }}/coverage.xml'
+
+- `${{ if eq(parameters.publishArtifacts, true) }}:
+  - script: |
+      pip install wheel setuptools
+      python setup.py bdist_wheel || echo "No setup.py found"
+    displayName: 'Build Package'
+    workingDirectory: '`${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '`${{ parameters.workingDirectory }}'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+"@
+        "templates/docker-build-template.yaml" = @"
+# Reusable template for Docker builds
+parameters:
+- name: dockerfilePath
+  type: string
+  default: 'Dockerfile'
+- name: imageName
+  type: string
+- name: containerRegistry
+  type: string
+  default: ''
+- name: runSecurityScan
+  type: boolean
+  default: true
+- name: buildContext
+  type: string
+  default: '.'
+- name: additionalTags
+  type: object
+  default: []
+
+steps:
+- task: Docker@2
+  displayName: 'Build Docker Image'
+  inputs:
+    command: 'build'
+    repository: '`${{ parameters.imageName }}'
+    dockerfile: '`${{ parameters.dockerfilePath }}'
+    buildContext: '`${{ parameters.buildContext }}'
+    tags: |
+      `$(Build.BuildId)
+      latest
+      `${{ join('\n', parameters.additionalTags) }}
+
+- `${{ if eq(parameters.runSecurityScan, true) }}:
+  - script: |
+      docker run --rm aquasec/trivy image --severity HIGH,CRITICAL `${{ parameters.imageName }}:`$(Build.BuildId) || true
+    displayName: 'Run Security Scan'
+    continueOnError: true
+
+- `${{ if ne(parameters.containerRegistry, '') }}:
+  - task: Docker@2
+    displayName: 'Push Docker Image'
+    inputs:
+      command: 'push'
+      containerRegistry: '`${{ parameters.containerRegistry }}'
+      repository: '`${{ parameters.imageName }}'
+      tags: |
+        `$(Build.BuildId)
+        latest
+        `${{ join('\n', parameters.additionalTags) }}
+"@
+    }
     
     # Get main branch commit
     $refsUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/git/repositories/$($repository.id)/refs?filter=heads/main"
@@ -275,7 +813,41 @@ stages:
         if ($mainRef.value.Count -gt 0) {
             $mainCommitId = $mainRef.value[0].objectId
             
-            # Add YAML file to repository
+            # Prepare all file changes (pipeline YAML + templates)
+            $allChanges = @()
+            
+            # Add the main pipeline YAML
+            $allChanges += @{
+                changeType = "add"
+                item = @{
+                    path = "/$($pipelineDef.path)"
+                }
+                newContent = @{
+                    content = $yamlBase64
+                    contentType = "base64encoded"
+                }
+            }
+            
+            # Add template files (only on first pipeline to avoid conflicts)
+            if ($pipelineDef.name -eq "Main-Web-App-CI") {
+                foreach ($templatePath in $templateFiles.Keys) {
+                    $templateContent = $templateFiles[$templatePath]
+                    $templateBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($templateContent))
+                    
+                    $allChanges += @{
+                        changeType = "add"
+                        item = @{
+                            path = "/$templatePath"
+                        }
+                        newContent = @{
+                            content = $templateBase64
+                            contentType = "base64encoded"
+                        }
+                    }
+                }
+            }
+            
+            # Commit all changes at once
             $pushBody = @{
                 refUpdates = @(
                     @{
@@ -285,38 +857,30 @@ stages:
                 )
                 commits = @(
                     @{
-                        comment = "Add Azure Pipeline YAML for $($pipeline.name)"
-                        changes = @(
-                            @{
-                                changeType = "add"
-                                item = @{
-                                    path = "/$($pipeline.path)"
-                                }
-                                newContent = @{
-                                    content = $yamlBase64
-                                    contentType = "base64encoded"
-                                }
-                            }
-                        )
+                        comment = "Add Azure Pipeline YAML for $($pipelineDef.name)"
+                        changes = $allChanges
                     }
                 )
             }
             
             $pushUri = New-AdoUri -Organization $org -Project $project -Resource "_apis/git/repositories/$($repository.id)/pushes"
-            Invoke-AdoRestApi -Uri $pushUri -Method POST -Headers $headers -Body $pushBody
+            $pushResult = Invoke-AdoRestApi -Uri $pushUri -Method POST -Headers $headers -Body $pushBody
             Write-Host "    ✓ Added pipeline YAML to repository" -ForegroundColor Green
+            
+            # Update commit ID for next iteration
+            $mainCommitId = $pushResult.commits[0].commitId
         }
     } catch {
         Write-Host "    ⚠ Could not add YAML file: $_" -ForegroundColor Yellow
     }
     
-    # Create pipeline definition with correct headers
+    # Create pipeline definition
     $pipelineBody = @{
-        name = $pipeline.name
+        name = $pipelineDef.name
         folder = "\\"
         configuration = @{
             type = "yaml"
-            path = $pipeline.path
+            path = $pipelineDef.path
             repository = @{
                 id = $repository.id
                 type = "azureReposGit"
@@ -334,12 +898,19 @@ stages:
             id = $createdPipeline.id
             name = $createdPipeline.name
             type = "yaml"
+            description = $pipelineDef.description
         }
-        Write-Host "    ✓ Created YAML pipeline ID: $($createdPipeline.id)" -ForegroundColor Green
+        Write-Host "    ✓ Created YAML CI pipeline ID: $($createdPipeline.id)" -ForegroundColor Green
     } catch {
-        Write-Host "    ⚠ Failed to create YAML pipeline: $($pipeline.name)" -ForegroundColor Yellow
+        Write-Host "    ⚠ Failed to create YAML pipeline: $($pipelineDef.name) - $_" -ForegroundColor Yellow
     }
+    
+    # Small delay to avoid rate limiting
+    Start-Sleep -Milliseconds 500
 }
+
+Write-Host "`n  Summary: Created $($buildPipelineIds.Count) YAML CI pipelines with reusable templates" -ForegroundColor Green
+
 
 # ===== CREATE CLASSIC RELEASE PIPELINES =====
 Write-Host "`n[3/4] Creating Classic Release Pipelines..." -ForegroundColor Cyan

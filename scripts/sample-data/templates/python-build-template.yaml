@@ -1,0 +1,80 @@
+# Reusable template for Python builds
+parameters:
+- name: pythonVersion
+  type: string
+  default: '3.11'
+- name: workingDirectory
+  type: string
+  default: '.'
+- name: requirementsFile
+  type: string
+  default: 'requirements.txt'
+- name: runQualityChecks
+  type: boolean
+  default: true
+- name: runTests
+  type: boolean
+  default: true
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: UsePythonVersion@0
+  displayName: 'Use Python ${{ parameters.pythonVersion }}'
+  inputs:
+    versionSpec: '${{ parameters.pythonVersion }}'
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r ${{ parameters.requirementsFile }}
+  displayName: 'Install Dependencies'
+  workingDirectory: '${{ parameters.workingDirectory }}'
+
+- ${{ if eq(parameters.runQualityChecks, true) }}:
+  - script: |
+      pip install pylint flake8 black mypy
+      black --check . || true
+      flake8 . --max-line-length=120 --exclude=venv,env,.git --exit-zero
+      pylint **/*.py --exit-zero
+    displayName: 'Run Code Quality Checks'
+    workingDirectory: '${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+- ${{ if eq(parameters.runTests, true) }}:
+  - script: |
+      pip install pytest pytest-cov pytest-asyncio
+      pytest tests/ --cov=. --cov-report=xml --cov-report=html --junitxml=test-results.xml
+    displayName: 'Run Tests with Coverage'
+    workingDirectory: '${{ parameters.workingDirectory }}'
+    continueOnError: false
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Test Results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-results.xml'
+      searchFolder: '${{ parameters.workingDirectory }}'
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '${{ parameters.workingDirectory }}/coverage.xml'
+
+- ${{ if eq(parameters.publishArtifacts, true) }}:
+  - script: |
+      pip install wheel setuptools
+      python setup.py bdist_wheel || echo "No setup.py found, skipping wheel build"
+    displayName: 'Build Package'
+    workingDirectory: '${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '${{ parameters.workingDirectory }}'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'

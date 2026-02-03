@@ -116,31 +116,57 @@ This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity typ
 
 ---
 
-### **6. PIPELINES** - **Total: 13 pipeline definitions**
+### **6. PIPELINES** - **Total: 17 pipeline definitions**
 
-**Build Pipelines**: 7 YAML pipelines
-- Main-App-CI (azure-pipelines.yml)
-- Docker-Build-CI (docker-pipeline.yml)
-- API-Service-CI (api-ci-pipeline.yml)
-- Auth-Service-CI (auth-ci-pipeline.yml)
-- Infrastructure-Validation-CI (terraform-validate.yml)
-- Security-Scan-CI (security-scan.yml)
-- Code-Quality-CI (code-quality.yml)
+**Build Pipelines**: 12 YAML CI pipelines **with reusable templates**
 
-**Release Pipelines**: 6 multi-stage deployments
+**CI Pipelines (.NET - 4)**:
+- Main-Web-App-CI (main web application)
+- API-Gateway-CI (API gateway service)
+- Mobile-Backend-CI (mobile backend service)
+- Payment-Service-CI (payment processing)
+
+**CI Pipelines (Node.js - 4)**:
+- Auth-Service-CI (authentication service)
+- User-Service-CI (user management)
+- Frontend-App-CI (React/Angular frontend)
+- API-Docs-CI (API documentation generator)
+
+**CI Pipelines (Python - 3)**:
+- Notification-Service-CI (notification service)
+- Analytics-Service-CI (analytics service)
+- Data-Processing-CI (data processing)
+
+**CI Pipelines (Docker - 1)**:
+- Container-WebApp-CI (containerized app)
+
+**Reusable YAML Templates**: 4 templates
+- dotnet-build-template.yaml (for .NET builds)
+- node-build-template.yaml (for Node.js builds)
+- python-build-template.yaml (for Python builds)
+- docker-build-template.yaml (for container builds)
+
+**Release Pipelines**: 5 classic multi-stage deployments
 - Main-App-CD: Dev → QA → Staging → Production (4 stages)
 - API-Service-CD: Dev → QA → Production (3 stages)
-- Auth-Service-CD: Dev → QA → Production (3 stages)
-- Infrastructure-Deploy-CD: Dev → Staging → Production (3 stages)
 - Database-Migration-CD: Dev → QA → Production (3 stages)
+- Infrastructure-Deploy-CD: Dev → Staging → Production (3 stages)
 - Container-Deploy-CD: Dev → QA → Production (3 stages)
 
 **Pipeline Features**:
-- ✓ YAML files committed to repositories
-- ✓ Triggers (CI, Scheduled, Manual)
-- ✓ Variables and variable groups
+- ✓ YAML files with template references committed to repositories
+- ✓ Reusable build templates for code consistency
+- ✓ Parameterized pipelines for flexibility
+- ✓ Multi-stage pipelines
+- ✓ Triggers (CI, path filters, branch filters)
+- ✓ Variables and configurations
+- ✓ Test execution and code coverage
+- ✓ Artifact publishing
+- ✓ Security scanning (containers)
 - ✓ Environment-specific configurations
 - ✓ Approvals and gates documented
+
+**📚 See [YAML-PIPELINES-README.md](YAML-PIPELINES-README.md) for detailed pipeline and template documentation**
 
 ---
 
@@ -253,9 +279,11 @@ This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity typ
 | **Test Plans** | 5 | 📝 Documented* |
 | **Test Runs** | 10 | 📝 Documented* |
 | **Test Configurations** | 3 | 📝 Documented* |
-| **Repositories** | 5 | ✅ Created |
-| **Build Pipelines** | 7 | 📝 Documented |
-| **Release Pipelines** | 6 | 📝 Documented |
+| **Repositories** | 6 | ✅ Created |
+| **Build Pipelines (YAML)** | **12** | ✅ Created |
+| **Reusable Templates** | **4** | ✅ Created |
+| **Release Pipelines (Classic)** | 5 | 📝 Documented |
+| **Total Pipelines** | **17** | **Mixed** |
 | **Work Item Links** | 35+ | ✅ Created |
 | **Wiki Pages** | 4+ | ✅ Created |
 | **Dashboards** | 2-3 | ✅ Created |

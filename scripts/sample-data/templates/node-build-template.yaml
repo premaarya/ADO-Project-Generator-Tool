@@ -1,0 +1,76 @@
+# Reusable template for Node.js builds
+parameters:
+- name: nodeVersion
+  type: string
+  default: '20.x'
+- name: workingDirectory
+  type: string
+  default: '.'
+- name: runLint
+  type: boolean
+  default: true
+- name: runTests
+  type: boolean
+  default: true
+- name: buildCommand
+  type: string
+  default: 'npm run build'
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js ${{ parameters.nodeVersion }}'
+  inputs:
+    versionSpec: '${{ parameters.nodeVersion }}'
+
+- script: npm ci
+  displayName: 'Install Dependencies'
+  workingDirectory: '${{ parameters.workingDirectory }}'
+
+- ${{ if eq(parameters.runLint, true) }}:
+  - script: npm run lint
+    displayName: 'Run Linting'
+    workingDirectory: '${{ parameters.workingDirectory }}'
+    continueOnError: true
+
+- ${{ if eq(parameters.runTests, true) }}:
+  - script: npm run test
+    displayName: 'Run Tests'
+    workingDirectory: '${{ parameters.workingDirectory }}'
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Test Results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-results.xml'
+      searchFolder: '${{ parameters.workingDirectory }}'
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '${{ parameters.workingDirectory }}/coverage/cobertura-coverage.xml'
+
+- script: ${{ parameters.buildCommand }}
+  displayName: 'Build Application'
+  workingDirectory: '${{ parameters.workingDirectory }}'
+
+- ${{ if eq(parameters.publishArtifacts, true) }}:
+  - task: ArchiveFiles@2
+    displayName: 'Archive Build Output'
+    inputs:
+      rootFolderOrFile: '${{ parameters.workingDirectory }}/dist'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/app-$(Build.BuildId).zip'
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'

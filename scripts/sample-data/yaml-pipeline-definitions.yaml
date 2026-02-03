@@ -1,0 +1,430 @@
+# CI Pipeline Definitions Using Reusable Templates
+
+## Pipeline 1: Main Web Application (.NET)
+```yaml
+name: Main-Web-App-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - feature/*
+  paths:
+    include:
+    - src/web-app/*
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test Web Application'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    steps:
+    - template: templates/dotnet-build-template.yaml
+      parameters:
+        buildConfiguration: $(buildConfiguration)
+        dotnetVersion: '8.x'
+        projectPath: 'src/web-app/**/*.csproj'
+        testProjectPath: 'src/web-app/**/*Tests.csproj'
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 2: API Gateway Service (.NET)
+```yaml
+name: API-Gateway-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - src/api-gateway/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build API Gateway'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/dotnet-build-template.yaml
+      parameters:
+        buildConfiguration: $(buildConfiguration)
+        dotnetVersion: '8.x'
+        projectPath: 'src/api-gateway/**/*.csproj'
+        testProjectPath: 'src/api-gateway/**/*Tests.csproj'
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 3: Authentication Service (Node.js)
+```yaml
+name: Auth-Service-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - hotfix/*
+  paths:
+    include:
+    - services/auth-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build Auth Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: $(nodeVersion)
+        workingDirectory: 'services/auth-service'
+        runLint: true
+        runTests: true
+        buildCommand: 'npm run build'
+        publishArtifacts: true
+```
+
+## Pipeline 4: User Management Service (Node.js)
+```yaml
+name: User-Service-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - services/user-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build User Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: $(nodeVersion)
+        workingDirectory: 'services/user-service'
+        runLint: true
+        runTests: true
+        buildCommand: 'npm run build'
+        publishArtifacts: true
+```
+
+## Pipeline 5: Notification Service (Python)
+```yaml
+name: Notification-Service-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - services/notification-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Notification Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/python-build-template.yaml
+      parameters:
+        pythonVersion: $(pythonVersion)
+        workingDirectory: 'services/notification-service'
+        requirementsFile: 'services/notification-service/requirements.txt'
+        runQualityChecks: true
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 6: Analytics Service (Python)
+```yaml
+name: Analytics-Service-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - services/analytics-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Analytics Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/python-build-template.yaml
+      parameters:
+        pythonVersion: $(pythonVersion)
+        workingDirectory: 'services/analytics-service'
+        requirementsFile: 'services/analytics-service/requirements.txt'
+        runQualityChecks: true
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 7: Frontend Application (Node.js/React)
+```yaml
+name: Frontend-App-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - feature/*
+  paths:
+    include:
+    - frontend/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build Frontend Application'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: $(nodeVersion)
+        workingDirectory: 'frontend'
+        runLint: true
+        runTests: true
+        buildCommand: 'npm run build:prod'
+        publishArtifacts: true
+```
+
+## Pipeline 8: Mobile Backend Service (.NET)
+```yaml
+name: Mobile-Backend-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - src/mobile-backend/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build Mobile Backend'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/dotnet-build-template.yaml
+      parameters:
+        buildConfiguration: $(buildConfiguration)
+        dotnetVersion: '8.x'
+        projectPath: 'src/mobile-backend/**/*.csproj'
+        testProjectPath: 'src/mobile-backend/**/*Tests.csproj'
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 9: Data Processing Service (Python)
+```yaml
+name: Data-Processing-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - services/data-processing/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+stages:
+- stage: Build
+  displayName: 'Build Data Processing Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/python-build-template.yaml
+      parameters:
+        pythonVersion: $(pythonVersion)
+        workingDirectory: 'services/data-processing'
+        requirementsFile: 'services/data-processing/requirements.txt'
+        runQualityChecks: true
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 10: Payment Service (.NET)
+```yaml
+name: Payment-Service-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+    - hotfix/*
+  paths:
+    include:
+    - src/payment-service/*
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  displayName: 'Build Payment Service'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/dotnet-build-template.yaml
+      parameters:
+        buildConfiguration: $(buildConfiguration)
+        dotnetVersion: '8.x'
+        projectPath: 'src/payment-service/**/*.csproj'
+        testProjectPath: 'src/payment-service/**/*Tests.csproj'
+        runTests: true
+        publishArtifacts: true
+```
+
+## Pipeline 11: API Documentation Generator (Node.js)
+```yaml
+name: API-Docs-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - docs/api/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+- stage: Build
+  displayName: 'Build API Documentation'
+  jobs:
+  - job: Build
+    steps:
+    - template: templates/node-build-template.yaml
+      parameters:
+        nodeVersion: $(nodeVersion)
+        workingDirectory: 'docs/api'
+        runLint: false
+        runTests: false
+        buildCommand: 'npm run build:docs'
+        publishArtifacts: true
+```
+
+## Pipeline 12: Container Build - Web App
+```yaml
+name: Container-WebApp-CI
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - src/web-app/*
+    - docker/webapp.Dockerfile
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  imageName: 'webapp'
+  containerRegistry: 'MyContainerRegistry'
+
+stages:
+- stage: Build
+  displayName: 'Build Web App Container'
+  jobs:
+  - job: BuildDocker
+    displayName: 'Build Docker Image'
+    steps:
+    - template: templates/docker-build-template.yaml
+      parameters:
+        dockerfilePath: 'docker/webapp.Dockerfile'
+        imageName: $(imageName)
+        containerRegistry: $(containerRegistry)
+        runSecurityScan: true
+        buildContext: 'src/web-app'
+        additionalTags:
+        - 'v1.0.$(Build.BuildId)'
+```

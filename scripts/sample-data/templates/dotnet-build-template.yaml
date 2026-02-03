@@ -1,0 +1,73 @@
+# Reusable template for .NET builds
+parameters:
+- name: buildConfiguration
+  type: string
+  default: 'Release'
+- name: dotnetVersion
+  type: string
+  default: '8.x'
+- name: projectPath
+  type: string
+  default: '**/*.csproj'
+- name: testProjectPath
+  type: string
+  default: '**/*Tests.csproj'
+- name: runTests
+  type: boolean
+  default: true
+- name: publishArtifacts
+  type: boolean
+  default: true
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK ${{ parameters.dotnetVersion }}'
+  inputs:
+    packageType: 'sdk'
+    version: '${{ parameters.dotnetVersion }}'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore NuGet Packages'
+  inputs:
+    command: 'restore'
+    projects: '${{ parameters.projectPath }}'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build Solution'
+  inputs:
+    command: 'build'
+    projects: '${{ parameters.projectPath }}'
+    arguments: '--configuration ${{ parameters.buildConfiguration }} --no-restore'
+
+- ${{ if eq(parameters.runTests, true) }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'Run Unit Tests'
+    inputs:
+      command: 'test'
+      projects: '${{ parameters.testProjectPath }}'
+      arguments: '--configuration ${{ parameters.buildConfiguration }} --no-build --collect:"XPlat Code Coverage" --logger trx'
+      publishTestResults: true
+
+  - task: PublishCodeCoverageResults@1
+    displayName: 'Publish Code Coverage'
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+- ${{ if eq(parameters.publishArtifacts, true) }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'Publish Application'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      projects: '${{ parameters.projectPath }}'
+      arguments: '--configuration ${{ parameters.buildConfiguration }} --output $(Build.ArtifactStagingDirectory) --no-build'
+      zipAfterPublish: true
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Build Artifacts'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
