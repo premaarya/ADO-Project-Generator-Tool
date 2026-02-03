@@ -6,11 +6,55 @@ A comprehensive PowerShell-based solution for generating complete Azure DevOps (
 
 This project generates a fully-populated Azure DevOps project that covers **ALL** possible ADO configurations and object types, providing comprehensive seed data to validate migration tools that convert ADO projects to GitHub.
 
+## 📑 Table of Contents
+
+- [Key Features](#-key-features)
+- [Recent Updates](#-recent-updates)
+- [What Gets Created](#-what-gets-created)
+- [Prerequisites](#-prerequisites)
+- [Quick Start](#-quick-start)
+- [Detailed Usage](#-detailed-usage)
+- [Configuration](#-configuration)
+- [Migration Testing](#-migration-testing-checklist)
+- [Troubleshooting](#️-troubleshooting)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
+
+## 🌟 Key Features
+
+- **✅ 12 YAML CI Pipelines** with reusable template architecture
+- **✅ 4 Reusable Build Templates** (.NET, Node.js, Python, Docker)
+- **✅ 71 Work Items** (Epics → Features → Stories → Tasks → Bugs)
+- **✅ 15 Test Cases** with detailed test steps
+- **✅ 6 Git Repositories** with sample code and commit history
+- **✅ 5 Classic Release Pipelines** with multi-stage deployments
+- **✅ 11 Automated Setup Scripts** for complete project creation
+- **✅ 250+ Azure DevOps Objects** for comprehensive migration testing
+
+## 🆕 Recent Updates
+
+**Enhanced Pipeline Architecture** (Latest)
+- Added 12 YAML CI pipelines covering .NET, Node.js, Python, and Docker
+- Implemented 4 reusable YAML templates for common build patterns
+- Demonstrating Azure DevOps template parameterization best practices
+- Comprehensive documentation for pipeline testing and migration
+- See [PIPELINE-ENHANCEMENT-SUMMARY.md](PIPELINE-ENHANCEMENT-SUMMARY.md) for details
+
 ## ✨ What Gets Created
 
 ### **COMPREHENSIVE ADO OBJECT INVENTORY**
 
-This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity types for complete migration testing.
+This solution creates **~250+ Azure DevOps objects** covering ALL ADO entity types for complete migration testing.
+
+**Highlights**:
+- 🏗️ **Complete Project Structure** - Teams, areas, iterations, boards
+- 📋 **71 Work Items** - Full hierarchy from epics to tasks
+- 🧪 **15 Test Cases** - With test plans and configurations
+- 📦 **6 Git Repositories** - With code, commits, and branches
+- 🔧 **17 Pipelines** - 12 YAML CI + 4 templates + 5 Classic CD
+- 🔗 **35+ Relationships** - Cross-object links and dependencies
+- 📚 **Wiki & Dashboards** - Documentation and reporting
+- 🔐 **Security & Governance** - Permissions and service connections
 
 ---
 
@@ -118,55 +162,80 @@ This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity typ
 
 ### **6. PIPELINES** - **Total: 17 pipeline definitions**
 
-**Build Pipelines**: 12 YAML CI pipelines **with reusable templates**
+#### **A. YAML CI Pipelines**: 12 pipelines **with reusable templates**
+
+All YAML pipelines are committed to repositories with template references, demonstrating production-ready patterns.
 
 **CI Pipelines (.NET - 4)**:
-- Main-Web-App-CI (main web application)
-- API-Gateway-CI (API gateway service)
-- Mobile-Backend-CI (mobile backend service)
-- Payment-Service-CI (payment processing)
+- **Main-Web-App-CI** - Main web application build
+- **API-Gateway-CI** - API gateway service build
+- **Mobile-Backend-CI** - Mobile backend service build
+- **Payment-Service-CI** - Payment processing service (with hotfix support)
 
 **CI Pipelines (Node.js - 4)**:
-- Auth-Service-CI (authentication service)
-- User-Service-CI (user management)
-- Frontend-App-CI (React/Angular frontend)
-- API-Docs-CI (API documentation generator)
+- **Auth-Service-CI** - Authentication microservice
+- **User-Service-CI** - User management service
+- **Frontend-App-CI** - React/Angular frontend (feature branch support)
+- **API-Docs-CI** - API documentation generator
 
 **CI Pipelines (Python - 3)**:
-- Notification-Service-CI (notification service)
-- Analytics-Service-CI (analytics service)
-- Data-Processing-CI (data processing)
+- **Notification-Service-CI** - Notification service
+- **Analytics-Service-CI** - Analytics and reporting service
+- **Data-Processing-CI** - ETL/data processing service
 
 **CI Pipelines (Docker - 1)**:
-- Container-WebApp-CI (containerized app)
+- **Container-WebApp-CI** - Containerized web application
 
-**Reusable YAML Templates**: 4 templates
-- dotnet-build-template.yaml (for .NET builds)
-- node-build-template.yaml (for Node.js builds)
-- python-build-template.yaml (for Python builds)
-- docker-build-template.yaml (for container builds)
+#### **B. Reusable YAML Templates**: 4 templates
 
-**Release Pipelines**: 5 classic multi-stage deployments
-- Main-App-CD: Dev → QA → Staging → Production (4 stages)
-- API-Service-CD: Dev → QA → Production (3 stages)
-- Database-Migration-CD: Dev → QA → Production (3 stages)
-- Infrastructure-Deploy-CD: Dev → Staging → Production (3 stages)
-- Container-Deploy-CD: Dev → QA → Production (3 stages)
+Templates encapsulate common build patterns and promote code reuse:
 
-**Pipeline Features**:
-- ✓ YAML files with template references committed to repositories
-- ✓ Reusable build templates for code consistency
-- ✓ Parameterized pipelines for flexibility
-- ✓ Multi-stage pipelines
-- ✓ Triggers (CI, path filters, branch filters)
-- ✓ Variables and configurations
-- ✓ Test execution and code coverage
-- ✓ Artifact publishing
-- ✓ Security scanning (containers)
-- ✓ Environment-specific configurations
-- ✓ Approvals and gates documented
+- **dotnet-build-template.yaml** - .NET builds with test & coverage
+- **node-build-template.yaml** - Node.js builds with linting & tests
+- **python-build-template.yaml** - Python builds with quality checks
+- **docker-build-template.yaml** - Container builds with security scanning
 
-**📚 See [YAML-PIPELINES-README.md](YAML-PIPELINES-README.md) for detailed pipeline and template documentation**
+Each template is fully parameterized with:
+- Version configuration (SDK/runtime versions)
+- Build options (configuration, paths)
+- Quality gates (tests, linting, coverage)
+- Artifact publishing
+
+#### **C. Classic Release Pipelines**: 5 multi-stage deployments
+
+- **Main-App-CD**: Dev → QA → Staging → Production (4 stages, approvals)
+- **API-Service-CD**: Dev → QA → Production (3 stages)
+- **Database-Migration-CD**: Dev → QA → Production (3 stages)
+- **Infrastructure-Deploy-CD**: Dev → Staging → Production (3 stages)
+- **Container-Deploy-CD**: Dev → QA → Production (3 stages)
+
+#### **Pipeline Features**:
+
+**YAML Pipeline Features**:
+- ✅ Template-based architecture for code reuse
+- ✅ Parameterized builds for flexibility
+- ✅ Multi-stage pipelines with stages & jobs
+- ✅ Branch triggers (main, develop, feature/*, hotfix/*)
+- ✅ Path filters for targeted builds
+- ✅ Conditional step execution
+- ✅ Test execution with result publishing
+- ✅ Code coverage collection and reporting
+- ✅ Build artifact creation and publishing
+- ✅ Security scanning (Docker images with Trivy)
+- ✅ Cross-platform builds (Windows/Linux)
+- ✅ Multiple technology stacks (.NET, Node.js, Python, Docker)
+
+**Release Pipeline Features**:
+- ✅ Multi-stage deployments
+- ✅ Environment-specific variables
+- ✅ Pre/post deployment approvals
+- ✅ Manual interventions
+- ✅ Deployment gates
+
+#### **📚 Documentation**
+- **[YAML-PIPELINES-README.md](YAML-PIPELINES-README.md)** - Comprehensive pipeline & template guide
+- **[PIPELINE-TESTING-GUIDE.md](PIPELINE-TESTING-GUIDE.md)** - Verification & testing procedures
+- **[PIPELINE-ENHANCEMENT-SUMMARY.md](PIPELINE-ENHANCEMENT-SUMMARY.md)** - Implementation details
 
 ---
 
@@ -280,10 +349,11 @@ This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity typ
 | **Test Runs** | 10 | 📝 Documented* |
 | **Test Configurations** | 3 | 📝 Documented* |
 | **Repositories** | 6 | ✅ Created |
-| **Build Pipelines (YAML)** | **12** | ✅ Created |
-| **Reusable Templates** | **4** | ✅ Created |
-| **Release Pipelines (Classic)** | 5 | 📝 Documented |
+| **YAML CI Pipelines** | **12** | ✅ Created |
+| **Reusable YAML Templates** | **4** | ✅ Created |
+| **Classic Release Pipelines** | 5 | 📝 Documented |
 | **Total Pipelines** | **17** | **Mixed** |
+| **Pipeline YAML Files** | 16 | ✅ Created |
 | **Work Item Links** | 35+ | ✅ Created |
 | **Wiki Pages** | 4+ | ✅ Created |
 | **Dashboards** | 2-3 | ✅ Created |
@@ -295,7 +365,7 @@ This solution creates **~200+ Azure DevOps objects** covering ALL ADO entity typ
 | **Security Groups** | 6 | 📝 Documented |
 | **Service Hooks** | Multiple | 📝 Documented |
 | | | |
-| **TOTAL OBJECTS** | **~200+** | **Mixed** |
+| **TOTAL OBJECTS** | **~250+** | **Mixed** |
 
 **Legend**:
 - ✅ = Actually created in Azure DevOps
@@ -375,7 +445,24 @@ https://dev.azure.com/{YOUR_ORG}/{PROJECT_NAME}
 
 ## 📖 Detailed Usage
 
+### Setup Scripts Execution Order
+
+The solution includes **11 sequential setup scripts**:
+
+1. **01-create-project.ps1** - Creates the ADO project
+2. **02-setup-teams-areas-iterations.ps1** - Sets up teams, area paths, and sprints
+3. **03-create-work-items.ps1** - Creates epics, features, user stories, tasks, and bugs
+4. **04-create-test-management.ps1** - Creates test cases and documents test plans
+5. **05-create-repositories.ps1** - Creates Git repositories with sample code
+6. **06-create-pipelines.ps1** - Creates 12 YAML CI pipelines with templates + 5 release pipelines
+7. **07-link-objects.ps1** - Creates relationships between work items, commits, and tests
+8. **08-create-wiki-dashboards.ps1** - Creates wiki pages, dashboards, and queries
+9. **09-create-service-connections-variables.ps1** - Documents service connections and variables
+10. **10-create-artifacts-feeds.ps1** - Documents artifact feeds and packages
+11. **11-create-permissions-hooks-extensions.ps1** - Documents permissions and webhooks
+
 ### Running Individual Scripts
+
 You can run scripts individually if needed:
 
 ```powershell
@@ -385,9 +472,14 @@ You can run scripts individually if needed:
 # Create work items only
 .\scripts\setup\03-create-work-items.ps1
 
+# Create pipelines with templates
+.\scripts\setup\06-create-pipelines.ps1
+
 # Create test management objects
 .\scripts\setup\04-create-test-management.ps1
 ```
+
+**Note**: Scripts should generally be run in order due to dependencies (e.g., pipelines need repositories to exist first).
 
 ### Skipping Project Creation
 If the project already exists:
@@ -470,12 +562,15 @@ After running this tool, your ADO project will have comprehensive data for testi
 - ✅ Test plans, suites, cases, and results
 - ✅ Git repositories with full history
 - ✅ Branch policies and pull requests
-- ✅ Build and release pipelines (Classic and YAML)
+- ✅ Build and release pipelines (12 YAML CI + 5 Classic CD)
+- ✅ Pipeline templates and parameterization
+- ✅ Multi-stage pipelines with conditions
 - ✅ Variable groups and service connections
 - ✅ Wiki pages with markdown content
 - ✅ Dashboards and queries
 - ✅ Team configurations
 - ✅ Cross-object links (commits to work items, etc.)
+- ✅ Multiple technology stacks (.NET, Node.js, Python, Docker)
 
 ## 🛠️ Troubleshooting
 
@@ -508,13 +603,28 @@ Contributions are welcome! Please:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📚 Additional Resources
+## 📚 Documentation
 
+### Project Documentation
+- **[README.md](README.md)** - This file - main user guide
+- **[QUICK-START.md](QUICK-START.md)** - Quick reference and command cheat sheet
+- **[IMPLEMENTATION.md](IMPLEMENTATION.md)** - Detailed architecture and technical details
+- **[AGENTS.md](AGENTS.md)** - AI agent instructions and requirements
+- **[ENTITY-COVERAGE.md](ENTITY-COVERAGE.md)** - Complete entity coverage matrix
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Pipeline Documentation
+- **[YAML-PIPELINES-README.md](YAML-PIPELINES-README.md)** - Comprehensive pipeline & template guide
+- **[PIPELINE-TESTING-GUIDE.md](PIPELINE-TESTING-GUIDE.md)** - Pipeline verification procedures
+- **[PIPELINE-ENHANCEMENT-SUMMARY.md](PIPELINE-ENHANCEMENT-SUMMARY.md)** - Recent enhancements
+- **[PIPELINES-SUMMARY.md](PIPELINES-SUMMARY.md)** - Pipeline overview
+
+### Azure DevOps Resources
 - [Azure DevOps REST API Documentation](https://learn.microsoft.com/en-us/rest/api/azure/devops/)
 - [Azure DevOps CLI Reference](https://learn.microsoft.com/en-us/cli/azure/devops)
 - [Work Item Types and Fields](https://learn.microsoft.com/en-us/azure/devops/boards/work-items/guidance/choose-process)
 - [Pipeline YAML Schema](https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/)
-- [IMPLEMENTATION.md](IMPLEMENTATION.md) - Detailed architecture guide
+- [YAML Pipeline Templates](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/templates)
 
 ## 📄 License
 
