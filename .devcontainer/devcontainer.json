@@ -34,9 +34,6 @@
     "ADO_ORGANIZATION": "",
     "POWERSHELL_TELEMETRY_OPTOUT": "1"
   },
-  "remoteEnv": {
-    "LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
-  },
 
   // Port forwarding for webhook testing
   "forwardPorts": [8080, 443],
@@ -47,12 +44,8 @@
     }
   },
 
-  // Secrets (GitHub Codespaces)
-  "secrets": {
-    "ADO_PAT": {
-      "description": "Azure DevOps Personal Access Token"
-    }
-  },
+  // Note: For GitHub Codespaces, configure secrets (ADO_PAT) in repository settings
+  // under Settings > Secrets and variables > Codespaces
 
   // VS Code customizations
   "customizations": {
@@ -71,24 +64,26 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "pwsh",
-        "powershell.powerShellDefaultVersion": "PowerShell (x64)",
         "editor.formatOnSave": true,
-        "files.trimTrailingWhitespace": true
+        "files.trimTrailingWhitespace": true,
+        "[powershell]": {
+          "editor.defaultFormatter": "ms-vscode.powershell"
+        }
       }
     }
   },
 
   // Mount Azure credentials from host (optional)
-  "mounts": [
-    "source=${localEnv:HOME}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached"
-  ],
+  // For Windows hosts: Update HOME to USERPROFILE in the mount path below
+  // For Linux/Mac hosts: Keep as-is with HOME
+  // "mounts": [
+  //   "source=${localEnv:HOME}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached"
+  // ],
 
   // Lifecycle commands
-  "initializeCommand": "echo 'Preparing container...'",
-  "onCreateCommand": "cp utils/config.json.example utils/config.json 2>/dev/null || true",
-  "postCreateCommand": "pwsh -Command 'Write-Host \"ADO Project Generator ready! Run ./Run-All.ps1 to start.\"'",
-  "postStartCommand": "pwsh -Command './Validate-Configuration.ps1 -SkipConnection' 2>/dev/null || true",
-  "updateContentCommand": "git pull",
+  "onCreateCommand": "bash -c 'if [ ! -f utils/config.json ]; then cp utils/config.json.example utils/config.json; echo \"Created config.json from example\"; else echo \"config.json already exists\"; fi'",
+  "postCreateCommand": "pwsh -Command 'Write-Host \"ADO Project Generator ready! Configure utils/config.json and run ./Run-All.ps1 to start.\" -ForegroundColor Green'",
+  "postStartCommand": "pwsh -Command 'if (Test-Path ./Validate-Configuration.ps1) { ./Validate-Configuration.ps1 -SkipConnection }'",
   "waitFor": "postCreateCommand",
 
   "remoteUser": "vscode"
